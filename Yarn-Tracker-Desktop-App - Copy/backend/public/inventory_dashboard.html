@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Dashboard | S.A. Textiles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/navbar.css">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            border-color: #cbd5e1;
+        }
+
+        .stat-card.active {
+            border-color: #f97316;
+            background: #fff7ed;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            height: 350px;
+            position: relative;
+        }
+
+        .roll-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .roll-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .roll-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-instock {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .status-reserved {
+            background: #ffedd5;
+            color: #ea580c;
+        }
+
+
+        .status-dispatched {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        /* Rack Visualization Styles */
+        .rack-visual {
+            background: #e2e8f0;
+            border: 10px solid #94a3b8;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 250px;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Top of the rack look */
+        .rack-visual::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            right: 10px;
+            height: 10px;
+            background: #64748b;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .shelf-row {
+            display: flex;
+            gap: 12px;
+            padding-bottom: 8px;
+            border-bottom: 8px solid #cbd5e1;
+            flex-wrap: wrap;
+            align-content: flex-end;
+            min-height: 70px;
+            position: relative;
+        }
+
+        .shelf-row::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .bin-box {
+            width: 70px;
+            height: 65px;
+            background: linear-gradient(to bottom, #3b82f6, #2563eb);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 4px 0 #1e40af, 0 6px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.1s ease;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .bin-box:hover {
+            transform: translateY(-2px);
+            z-index: 10;
+            background: linear-gradient(to bottom, #60a5fa, #3b82f6);
+        }
+
+        .bin-box:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #1e40af, inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .bin-count-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: bold;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 550px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalSlideUp {
+            from {
+                transform: translateY(30px) scale(0.95);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen pb-10">
+    <div id="navbar-placeholder"></div>
+    <!-- Navbar will be injected here -->
+    <script src="/navbar.js"></script>
+
+    <main class="max-w-[1600px] mx-auto px-6 py-8 mt-20">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800">Inventory Dashboard</h1>
+                <p class="text-slate-500 mt-1">Real-time overview of yarn stock and distribution</p>
+            </div>
+            <button id="refresh-btn" onclick="fetchData()" title="Refresh Data"
+                class="h-[42px] w-[42px] rounded-lg border border-slate-200 bg-white cursor-pointer text-slate-600 flex items-center justify-center p-0 hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
+                <svg id="refresh-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                    </path>
+                </svg>
+            </button>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+            <div class="stat-card" onclick="applyFilter('all')">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Total Yarns</p>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="total-yarns">-</h3>
+                    </div>
+                    <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-4">All registered rolls</p>
+            </div>
+
+            <div class="stat-card" onclick="applyFilter('reserved')">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Reserved</p>
+                        <h3 class="text-3xl font-bold text-orange-600 mt-1" id="reserved-yarns">-</h3>
+                    </div>
+                    <div class="p-2 bg-orange-50 rounded-lg text-orange-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-4">Awaiting dispatch</p>
+            </div>
+
+            <div class="stat-card" onclick="applyFilter('picked')">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Picked</p>
+                        <h3 class="text-3xl font-bold text-indigo-600 mt-1" id="picked-yarns">-</h3>
+                    </div>
+                    <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-4">Moved to picking area</p>
+            </div>
+
+            <div class="stat-card" onclick="applyFilter('dispatched')">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Dispatched</p>
+                        <h3 class="text-3xl font-bold text-green-600 mt-1" id="dispatched-yarns">-</h3>
+                    </div>
+                    <div class="p-2 bg-green-50 rounded-lg text-green-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-4">Completed orders</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Bins in Use</p>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="active-bins">-</h3>
+                    </div>
+                    <div class="p-2 bg-purple-50 rounded-lg text-purple-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-4">Across active racks</p>
+            </div>
+        </div>
+
+        <!-- Warehouse Overview Section -->
+        <section class="mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    Warehouse Overview
+                    <span class="text-sm font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-full"
+                        id="rack-count">0 Racks</span>
+                </h2>
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-medium text-slate-500">Highlight Type:</span>
+                    <select id="warehouse-filter-type" style="height: 42px; min-width: 180px;"
+                        class="px-3 border rounded-lg text-sm outline-none focus:border-orange-500 box-sizing: border-box;">
+                        <option value="">All Types</option>
+                    </select>
+                </div>
+            </div>
+            <div id="warehouse-breakdown" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Rack cards will be injected here -->
+                <div class="col-span-full py-12 text-center text-slate-400 glass-card">
+                    Loading warehouse statistics...
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="chart-container flex flex-col">
+                <h3 class="text-lg font-bold text-slate-700 mb-4">Stock by Rack</h3>
+                <div class="flex-1 w-full flex justify-center overflow-hidden">
+                    <div id="rackChartWrapper" class="h-full w-full">
+                        <canvas id="rackChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container flex flex-col">
+                <h3 class="text-lg font-bold text-slate-700 mb-4">Stock by Yarn Type</h3>
+                <div class="flex-1 w-full flex justify-center overflow-hidden">
+                    <div id="typeChartWrapper" class="h-full w-full">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <span id="grid-title">All Yarn Rolls</span>
+                    <span class="text-sm font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-full"
+                        id="grid-count">0</span>
+                </h2>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="relative" style="flex: 1; min-width: 200px;">
+                        <input type="text" id="filter-search" placeholder="Search ID, Type, Lot..."
+                            style="height: 42px; padding: 0 1rem 0 2.5rem;"
+                            class="w-full border rounded-lg text-sm outline-none focus:border-orange-500 box-sizing: border-box;">
+                        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <input type="text" id="filter-bin" placeholder="Bin" style="width: 80px; height: 42px;"
+                        class="px-3 border rounded-lg text-sm outline-none focus:border-orange-500 box-sizing: border-box;">
+                    <input type="text" id="filter-rack" placeholder="Rack" style="width: 80px; height: 42px;"
+                        class="px-3 border rounded-lg text-sm outline-none focus:border-orange-500 box-sizing: border-box;">
+                    <select id="filter-type" style="height: 42px; min-width: 150px; max-width: 200px;"
+                        class="px-3 border rounded-lg text-sm outline-none focus:border-orange-500 box-sizing: border-box;">
+                        <option value="">All Types</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="rolls-grid" class="roll-grid">
+                <!-- Rolls injected here -->
+            </div>
+
+            <div id="empty-state" class="hidden text-center py-12">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-slate-50 rounded-full mb-4">
+                    <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                        </path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-slate-700">No yarns found</h3>
+                <p class="text-slate-500">Try adjusting your filters or search terms.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bin Details Modal -->
+    <div id="bin-modal" class="modal-overlay" onclick="closeBinModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-4">
+                    <div class="min-w-[56px] h-14 bg-blue-100 text-blue-600 rounded-xl flex flex-col items-center justify-center font-bold shadow-inner"
+                        id="modal-bin-icon">
+                        <span class="text-[10px] uppercase opacity-70 leading-none">Bin</span>
+                        <span class="text-xl">1</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800" id="modal-bin-title">Bin Details</h3>
+                        <p class="text-sm text-slate-500 font-medium" id="modal-rack-info">Rack location unknown</p>
+                    </div>
+                </div>
+                <button onclick="closeBinModal()"
+                    class="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <div id="modal-bin-stats" class="grid grid-cols-2 gap-4 mb-8">
+                    <!-- Stats injected here -->
+                </div>
+
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Contents</h4>
+                    <span class="text-xs text-slate-400 font-medium" id="modal-last-updated">Real-time</span>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                            <tr>
+                                <th class="py-3 px-5 font-semibold text-xs uppercase">Yarn Type / Lot</th>
+                                <th class="py-3 px-5 font-semibold text-xs uppercase text-right">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-bin-content" class="divide-y divide-slate-100 bg-white">
+                            <!-- Rows injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button onclick="closeBinModal()"
+                    class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
+                    Close
+                </button>
+            </div>
+        </div>
+        <!-- Order Details Modal -->
+        <div id="order-modal" class="modal-overlay" onclick="closeOrderModal(event)">
+            <div class="modal-content !max-w-2xl" onclick="event.stopPropagation()">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-orange-50/50">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center font-bold text-xl shadow-inner">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800" id="modal-order-id">Order Details</h3>
+                            <p class="text-sm text-orange-600 font-bold" id="modal-customer-name">Customer Name</p>
+                        </div>
+                    </div>
+                    <button onclick="closeOrderModal()"
+                        class="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-6 overflow-y-auto custom-scrollbar space-y-8">
+                    <!-- Asked Items -->
+                    <section>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Items Asked</h4>
+                        <div id="modal-order-asked" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <!-- Asked items go here -->
+                        </div>
+                    </section>
+
+                    <!-- Allocated Rolls -->
+                    <section>
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Allocated Rolls</h4>
+                            <span id="modal-allocated-count"
+                                class="text-xs font-bold bg-slate-100 px-2 py-0.5 rounded text-slate-500">0 Rolls</span>
+                        </div>
+                        <div id="modal-order-allocated" class="space-y-2">
+                            <!-- Allocated rolls go here -->
+                        </div>
+                    </section>
+                </div>
+
+                <div class="p-5 border-t border-slate-100 bg-slate-50 flex justify-end">
+                    <button onclick="closeOrderModal()"
+                        class="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script type="module">
+            // Initialize Firebase with Modular SDK from CDN
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+            import { getFirestore, collection, doc, getDoc, collectionGroup, query, getDocs, onSnapshot, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+            // Your web app's Firebase configuration
+            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+            const firebaseConfig = {
+                apiKey: "AIzaSyAYXVrRtfStYQqFFBWYyTQGfOb345di2Ls",
+                authDomain: "yarn-roll.firebaseapp.com",
+                projectId: "yarn-roll",
+                storageBucket: "yarn-roll.firebasestorage.app",
+                messagingSenderId: "157993278528",
+                appId: "1:157993278528:web:4e88ed6e011bc42faa13a5",
+                measurementId: "G-SE7XVEDGQR"
+            };
+
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+
+            let allRolls = [];
+            let currentFilter = 'all'; // all, reserved, dispatched, or specific ID types
+            let rackChartInstance = null;
+            let typeChartInstance = null;
+            let unsubscribe = null;
+            let BIN_CAPACITY = 10; // Default, will be updated from DB
+            let RACK_CAPACITY = 100; // Default (10 bins * 10 rolls)
+            let reservedRollsFromCollection = []; // Track reserved documents separately
+            let allOrders = []; // Track order documents for customer names
+
+            // Manual fetch function (replaces live sync for better control)
+            let previousDataState = "";
+
+            async function fetchData() {
+                const icon = document.getElementById('refresh-icon');
+                const btn = document.getElementById('refresh-btn');
+
+                if (icon) icon.classList.add('animate-spin');
+                if (btn) btn.disabled = true;
+
+                try {
+                    // 1. Fetch Capacity Settings from DB
+                    let settings = { bin: 10, rack: 100 };
+                    try {
+                        const rulesSnap = await getDocs(collection(db, 'config', 'inventory_rules', 'rules'));
+                        if (!rulesSnap.empty) {
+                            const rules = {};
+                            rulesSnap.forEach(d => rules[d.id] = d.data());
+                            if (rules.max_bin_capacity) settings.bin = parseInt(rules.max_bin_capacity.value) || 10;
+                            if (rules.bins_per_rack) {
+                                settings.rack = settings.bin * (parseInt(rules.bins_per_rack.value) || 10);
+                            }
+                        }
+                    } catch (e) { console.warn("Settings fetch failed"); }
+
+                    // 2. Fetch Rolls
+                    const snapshot = await getDocs(collection(db, 'yarnRolls'));
+                    const newRolls = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    })).filter(r => r.id && !r.id.toLowerCase().includes('test'));
+
+                    const reservedSnapshot = await getDocs(collection(db, 'reserved_collection'));
+                    const newReserved = reservedSnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    })).filter(r => ['reserved', 'moved'].includes(String(r.state || '').toLowerCase()));
+
+                    const ordersSnapshot = await getDocs(collection(db, 'Order_collection'));
+                    const newOrders = ordersSnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+
+                    // 3. Diff Check - Only update UI if state changed
+                    const currentStateString = JSON.stringify({ rolls: newRolls, reserved: newReserved, orders: newOrders, settings });
+                    if (currentStateString === previousDataState) {
+                        if (icon) icon.classList.remove('animate-spin');
+                        if (btn) btn.disabled = false;
+                        return;
+                    }
+
+                    allRolls = newRolls;
+                    reservedRollsFromCollection = newReserved;
+                    allOrders = newOrders;
+                    BIN_CAPACITY = settings.bin;
+                    RACK_CAPACITY = settings.rack;
+                    previousDataState = currentStateString;
+
+                    allRolls.sort((a, b) => new Date(b.production_date) - new Date(a.production_date));
+
+                    populateTypeDropdown(allRolls);
+                    updateStats();
+                    updateCharts();
+                    applyFilter(currentFilter);
+
+                    if (icon) {
+                        icon.classList.remove('animate-spin');
+                        icon.classList.add('text-green-500');
+                        setTimeout(() => icon.classList.remove('text-green-500'), 2000);
+                    }
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
+            }
+            window.fetchData = fetchData;
+
+            function populateTypeDropdown(rolls) {
+                const distinctTypes = [...new Set(rolls.map(r => r.yarn_type || 'Unknown'))].sort();
+                const dropdowns = ['filter-type', 'warehouse-filter-type'];
+
+                dropdowns.forEach(id => {
+                    const typeSelect = document.getElementById(id);
+                    if (!typeSelect) return;
+
+                    const currentVal = typeSelect.value;
+                    const existingTypes = Array.from(typeSelect.options).map(o => o.value).filter(v => v !== "");
+
+                    // Only update if types have changed
+                    if (JSON.stringify(existingTypes) === JSON.stringify(distinctTypes)) return;
+
+                    typeSelect.innerHTML = '<option value="">All Types</option>';
+                    distinctTypes.forEach(type => {
+                        const opt = document.createElement('option');
+                        opt.value = type;
+                        opt.textContent = type;
+                        typeSelect.appendChild(opt);
+                    });
+                    typeSelect.value = currentVal;
+                });
+            }
+
+            // --- Frontend Aggregation for Stats (Replaces /api/dashboard-stats) ---
+            function calculateWarehouseStats(rolls) {
+                const racks = {};
+
+                rolls.forEach(r => {
+                    const rackId = String(r.rack_id || '1').replace(/[Rr]/g, '');
+                    const binId = String(r.bin || '1').replace(/[Bb]/g, '');
+                    const type = r.yarn_type || 'Unknown';
+                    const countStr = r.yarn_count || 'N/A';
+
+                    if (!racks[rackId]) {
+                        racks[rackId] = {
+                            rack_id: rackId,
+                            uniqueBins: new Set(),
+                            totalYarns: 0,
+                            bins: {}
+                        };
+                    }
+
+                    racks[rackId].uniqueBins.add(binId);
+                    racks[rackId].totalYarns++;
+
+                    if (!racks[rackId].bins[binId]) {
+                        racks[rackId].bins[binId] = {
+                            total: 0,
+                            stock: {}
+                        };
+                    }
+
+                    const stockKey = `${type} | ${countStr}`;
+                    if (!racks[rackId].bins[binId].stock[stockKey]) {
+                        racks[rackId].bins[binId].stock[stockKey] = 0;
+                    }
+
+                    racks[rackId].bins[binId].stock[stockKey]++;
+                    racks[rackId].bins[binId].total++;
+                });
+
+                // Convert to array format for template
+                return Object.values(racks).map(r => ({
+                    ...r,
+                    uniqueBinsCount: r.uniqueBins.size
+                })).sort((a, b) => a.rack_id.localeCompare(b.rack_id, undefined, { numeric: true }));
+            }
+
+            function updateStats() {
+                document.getElementById('total-yarns').textContent = allRolls.length;
+
+                // Display count from reserved_collection where state is 'reserved'
+                const reservedCount = reservedRollsFromCollection.filter(r =>
+                    String(r.state).toLowerCase() === 'reserved'
+                ).length;
+                document.getElementById('reserved-yarns').textContent = reservedCount;
+
+                const pickedCount = reservedRollsFromCollection.filter(r =>
+                    String(r.state).toLowerCase() === 'moved'
+                ).length;
+                document.getElementById('picked-yarns').textContent = pickedCount;
+
+                document.getElementById('dispatched-yarns').textContent = allRolls.filter(r => r.state === 'DISPATCHED').length;
+
+                let uniqueBinLocations = new Set(allRolls.map(r => `${r.rack_id || '?'}-${r.bin || '?'}`));
+                document.getElementById('active-bins').textContent = uniqueBinLocations.size;
+
+                // Render Warehouse Stats locally using yarnRolls data
+                const stats = calculateWarehouseStats(allRolls);
+
+                // Get current filter state for highlighting
+                const activeTypeFilter = document.getElementById('filter-type').value;
+                renderWarehouseBreakdown(stats, activeTypeFilter);
+            }
+
+            // Reuses the exact same HTML template logic as before - VISUAL RACK VERSION
+            let lastWarehouseState = "";
+            function renderWarehouseBreakdown(racksBreakdown, highlightType = '') {
+                const breakdownContainer = document.getElementById('warehouse-breakdown');
+                const currentState = JSON.stringify({ racksBreakdown, highlightType, BIN_CAPACITY, RACK_CAPACITY });
+                if (currentState === lastWarehouseState) return;
+                lastWarehouseState = currentState;
+                document.getElementById('rack-count').textContent = `${racksBreakdown.length} Racks`;
+
+                if (racksBreakdown.length === 0) {
+                    breakdownContainer.innerHTML = `
+                     <div class="col-span-full py-16 text-center">
+                         <div class="w-20 h-20 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                             <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                             </svg>
+                         </div>
+                         <p class="text-slate-400 font-medium">No warehouse data available</p>
+                         <p class="text-slate-300 text-sm mt-1">Add some yarn rolls to get started</p>
+                     </div>
+                 `;
+                    return;
+                }
+
+                breakdownContainer.innerHTML = racksBreakdown.map((rack, rackIdx) => {
+                    const sortedBins = Object.entries(rack.bins).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }));
+
+                    // Group bins into "shelves" of 4
+                    const binsPerShelf = 4;
+                    const shelves = [];
+                    for (let i = 0; i < sortedBins.length; i += binsPerShelf) {
+                        shelves.push(sortedBins.slice(i, i + binsPerShelf));
+                    }
+
+                    // Ensure at least 3 visual shelves for consistency
+                    const shelfRows = shelves.map(shelf => `
+                     <div class="shelf-row">
+                         ${shelf.map(([binId, data]) => {
+                        // Logic for highlighting
+                        let isDimmed = false;
+                        let displayCount = data.total;
+                        let countLabel = 'Total';
+                        let highlightClass = '';
+
+                        if (highlightType) {
+                            const matchingStock = Object.entries(data.stock).find(([k, v]) => k.split(' | ')[0].trim().toLowerCase() === highlightType.toLowerCase());
+                            if (matchingStock) {
+                                displayCount = matchingStock[1];
+                                countLabel = 'Qty';
+                                highlightClass = 'ring-4 ring-orange-400 ring-offset-2 z-20';
+                            } else {
+                                isDimmed = true;
+                            }
+                        }
+
+                        const capacityPercent = Math.min(100, Math.round((data.total / BIN_CAPACITY) * 100));
+                        const capacityColor = capacityPercent > 90 ? 'bg-red-500' : capacityPercent > 60 ? 'bg-amber-400' : 'bg-green-400';
+
+                        return `
+                             <div class="bin-box group ${isDimmed ? 'opacity-20 grayscale' : ''} ${highlightClass}" 
+                                  onclick="openBinModal('${rack.rack_id}', '${binId}')" 
+                                  title="Bin ${binId}: ${displayCount} ${countLabel} (Cap: ${data.total}/${BIN_CAPACITY})">
+                                 
+                                 <div class="flex flex-col items-center justify-center">
+                                     <span class="text-[11px] uppercase tracking-wider font-extrabold opacity-90 leading-none mb-1">Bin</span>
+                                     <span class="text-2xl leading-none">${binId}</span>
+                                     <div class="w-12 h-1 bg-white/30 rounded-full mt-2 overflow-hidden">
+                                        <div class="h-full ${capacityColor}" style="width: ${capacityPercent}%"></div>
+                                     </div>
+                                 </div>
+
+                                 <div class="bin-count-badge group-hover:bg-white group-hover:text-red-500 transition-colors">
+                                    ${displayCount}
+                                 </div>
+                             </div>
+                         `}).join('')}
+                     </div>
+                 `).join('');
+
+                    const emptyShelves = shelves.length < 3
+                        ? `<div class="shelf-row opacity-50"></div>`.repeat(3 - shelves.length)
+                        : '';
+
+                    return `
+                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
+                     <div class="flex justify-between items-center mb-6">
+                         <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center font-bold text-lg">
+                                ${rack.rack_id}
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800">Rack ${rack.rack_id}</h3>
+                         </div>
+                         <div class="flex flex-col items-end">
+                            <span class="text-xs font-bold bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-100 flex items-center gap-1">
+                                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                ${rack.totalYarns} / ${RACK_CAPACITY} Yarns
+                            </span>
+                            <div class="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                <div class="h-full bg-green-500 rounded-full" style="width: ${(rack.totalYarns / RACK_CAPACITY) * 100}%"></div>
+                            </div>
+                         </div>
+                     </div>
+                     
+                     <div class="rack-visual flex-1">
+                         ${shelfRows}
+                         ${emptyShelves}
+                     </div>
+                 </div>
+             `}).join('');
+            }
+
+            // Global Modal Functions
+            window.openBinModal = function (rackId, binId) {
+                const stats = calculateWarehouseStats(allRolls);
+                const rack = stats.find(r => r.rack_id == rackId);
+                if (!rack) return;
+
+                const binData = rack.bins[binId];
+                if (!binData) return;
+
+                document.getElementById('modal-bin-title').textContent = `Bin ${binId}`;
+                document.getElementById('modal-bin-icon').innerHTML = `
+                <span class="text-[10px] uppercase opacity-70 leading-none">Bin</span>
+                <span class="text-xl">${binId}</span>
+            `;
+                document.getElementById('modal-rack-info').textContent = `Located in Rack ${rackId}`;
+
+                // Populate Stats
+                const uniqueTypes = new Set(Object.keys(binData.stock).map(k => k.split(' | ')[0])).size;
+
+                document.getElementById('modal-bin-stats').innerHTML = `
+                <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                    <p class="text-xs text-indigo-500 font-bold uppercase tracking-wider mb-1">Total Items</p>
+                    <p class="text-3xl font-extrabold text-indigo-700">${binData.total}</p>
+                </div>
+                <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                    <p class="text-xs text-emerald-500 font-bold uppercase tracking-wider mb-1">Yarn Types</p>
+                    <p class="text-3xl font-extrabold text-emerald-700">${uniqueTypes}</p>
+                </div>
+             `;
+
+                // Populate Content Table
+                const tableBody = document.getElementById('modal-bin-content');
+                tableBody.innerHTML = Object.entries(binData.stock).map(([key, count]) => {
+                    const [type, count_info] = key.split(' | ');
+                    return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-5">
+                            <div class="font-bold text-slate-700">${type}</div>
+                            <!-- Helper info if count_info different from type -->
+                             ${count_info !== 'N/A' && count_info !== type ? `<div class="text-xs text-slate-400 mt-0.5">${count_info}</div>` : ''} 
+                        </td>
+                        <td class="py-3 px-5 text-right">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold bg-white border border-slate-200 text-slate-700 shadow-sm">
+                                ${count}
+                            </span>
+                        </td>
+                    </tr>
+                 `;
+                }).join('');
+
+                const modal = document.getElementById('bin-modal');
+                modal.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            };
+
+            window.closeBinModal = function (event) {
+                if (event && event.target !== event.currentTarget) return;
+
+                document.getElementById('bin-modal').classList.remove('open');
+                document.body.style.overflow = '';
+            };
+
+            window.openOrderModal = function (orderId) {
+                const orderDoc = allOrders.find(o => o.id === orderId);
+                const orderRolls = reservedRollsFromCollection.filter(r => r.order_id === orderId);
+
+                if (!orderDoc) {
+                    alert('Order details not found in database.');
+                    return;
+                }
+
+                document.getElementById('modal-order-id').textContent = orderId;
+                document.getElementById('modal-customer-name').textContent = orderDoc.customer_name || 'Unknown Customer';
+
+                // Render Asked Items
+                const items = orderDoc.items || [{ yarn_type: orderDoc.yarn_type, quantity: orderDoc.quantity }];
+                document.getElementById('modal-order-asked').innerHTML = items.map(item => `
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                        <span class="font-bold text-slate-700">${item.yarn_type}</span>
+                        <span class="bg-white px-2 py-1 rounded-lg border border-slate-200 text-xs font-bold text-orange-600">${item.quantity} Rolls</span>
+                    </div>
+                `).join('');
+
+                // Render Allocated Rolls
+                document.getElementById('modal-allocated-count').textContent = `${orderRolls.length} Rolls`;
+                document.getElementById('modal-order-allocated').innerHTML = orderRolls.map(roll => `
+                    <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-xs">
+                                #${roll.id.slice(-4)}
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-800">${roll.yarn_type}</div>
+                               <div class="text-[10px] text-slate-400 font-medium">Rack ${roll.rack_id} / Bin ${roll.bin} • Lot ${roll.lot_number || '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('order-modal').classList.add('open');
+                document.body.style.overflow = 'hidden';
+            };
+
+            window.closeOrderModal = function (event) {
+                if (event && event.target !== event.currentTarget) return;
+                document.getElementById('order-modal').classList.remove('open');
+                document.body.style.overflow = '';
+            };
+
+            // Close on Escape key
+            document.addEventListener('keydown', function (event) {
+                if (event.key === "Escape") {
+                    window.closeBinModal();
+                    window.closeOrderModal();
+                }
+            });
+
+            function updateCharts() {
+                const setDynamicWidth = (wrapperId, count) => {
+                    const wrapper = document.getElementById(wrapperId);
+                    const width = Math.max(300, count * 80);
+                    wrapper.style.width = width + 'px';
+                    wrapper.style.maxWidth = '100%';
+                };
+
+                const rollsByRack = {};
+                allRolls.forEach(r => {
+                    const rack = r.rack_id || 'Unassigned';
+                    rollsByRack[rack] = (rollsByRack[rack] || 0) + 1;
+                });
+                setDynamicWidth('rackChartWrapper', Object.keys(rollsByRack).length);
+
+                const rollsByType = {};
+                allRolls.forEach(r => {
+                    const type = r.yarn_type || 'Unknown';
+                    rollsByType[type] = (rollsByType[type] || 0) + 1;
+                });
+                setDynamicWidth('typeChartWrapper', Object.keys(rollsByType).length);
+
+                const chartConfig = {
+                    type: 'bar',
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                };
+
+                // Persistent Rack Chart
+                const rackLabels = Object.keys(rollsByRack);
+                const rackData = Object.values(rollsByRack);
+
+                if (rackChartInstance) {
+                    rackChartInstance.data.labels = rackLabels;
+                    rackChartInstance.data.datasets[0].data = rackData;
+                    rackChartInstance.update('none'); // Update without animation to prevent flicker
+                } else {
+                    const rackCtx = document.getElementById('rackChart').getContext('2d');
+                    rackChartInstance = new Chart(rackCtx, {
+                        ...chartConfig,
+                        options: {
+                            ...chartConfig.options,
+                            scales: {
+                                y: { ...chartConfig.options.scales.y, title: { display: true, text: 'Quantity (Rolls)', font: { weight: 'bold' } } },
+                                x: { ...chartConfig.options.scales.x, title: { display: true, text: 'Rack Locations', font: { weight: 'bold' } } }
+                            }
+                        },
+                        data: {
+                            labels: rackLabels,
+                            datasets: [{
+                                label: 'Rolls',
+                                data: rackData,
+                                backgroundColor: '#f97316',
+                                borderRadius: 6,
+                                maxBarThickness: 40
+                            }]
+                        }
+                    });
+                }
+
+                // Persistent Type Chart
+                const typeLabels = Object.keys(rollsByType);
+                const typeData = Object.values(rollsByType);
+
+                if (typeChartInstance) {
+                    typeChartInstance.data.labels = typeLabels;
+                    typeChartInstance.data.datasets[0].data = typeData;
+                    typeChartInstance.update('none');
+                } else {
+                    const typeCtx = document.getElementById('typeChart').getContext('2d');
+                    typeChartInstance = new Chart(typeCtx, {
+                        ...chartConfig,
+                        options: {
+                            ...chartConfig.options,
+                            scales: {
+                                y: { ...chartConfig.options.scales.y, title: { display: true, text: 'Quantity (Rolls)', font: { weight: 'bold' } } },
+                                x: { ...chartConfig.options.scales.x, title: { display: true, text: 'Yarn Types', font: { weight: 'bold' } } }
+                            }
+                        },
+                        data: {
+                            labels: typeLabels,
+                            datasets: [{
+                                label: 'Rolls',
+                                data: typeData,
+                                backgroundColor: '#0ea5e9',
+                                borderRadius: 6,
+                                maxBarThickness: 40
+                            }]
+                        }
+                    });
+                }
+            }
+
+            let lastGridState = "";
+            function renderGrid(rolls) {
+                const grid = document.getElementById('rolls-grid');
+                const currentState = JSON.stringify(rolls);
+                if (currentState === lastGridState) return;
+                lastGridState = currentState;
+                const empty = document.getElementById('empty-state');
+                const count = document.getElementById('grid-count');
+
+                grid.innerHTML = '';
+                count.textContent = rolls.length;
+
+                if (rolls.length === 0) {
+                    grid.classList.add('hidden');
+                    empty.classList.remove('hidden');
+                    return;
+                }
+
+                grid.classList.remove('hidden');
+                empty.classList.add('hidden');
+
+                rolls.forEach(item => {
+                    if (item.isOrderGroup) {
+                        // Render Order Card
+                        const card = document.createElement('div');
+                        card.className = 'roll-card border-l-4 border-l-orange-500 cursor-pointer hover:bg-orange-50/30';
+                        card.onclick = () => openOrderModal(item.order_id);
+                        card.innerHTML = `
+                            <div class="flex justify-between items-start mb-3">
+                                 <div class="flex flex-col">
+                                    <span class="text-[10px] font-bold text-orange-600 uppercase tracking-wider">Reserved Order</span>
+                                    <span class="font-bold text-slate-800">${item.customer_name}</span>
+                                 </div>
+                                 <span class="status-badge bg-orange-100 text-orange-600">${item.rolls.length} Rolls</span>
+                            </div>
+                            <div class="space-y-2 text-sm border-t border-slate-50 pt-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-400 text-xs">Order ID</span>
+                                    <span class="font-mono text-xs text-slate-600 font-bold bg-slate-50 px-1.5 py-0.5 rounded">${item.order_id}</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    ${Array.from(new Set(item.rolls.map(r => r.yarn_type))).map(type => `
+                                        <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">${type}</span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div class="mt-4 flex justify-center">
+                                 <span class="text-[10px] text-orange-500 font-bold hover:underline">VIEW ALLOCATION DETAILS →</span>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                        return;
+                    }
+
+                    const roll = item;
+                    const statusClass = roll.state === 'IN STOCK' ? 'status-instock' :
+                        roll.state === 'RESERVED' ? 'status-reserved' :
+                            roll.state === 'DISPATCHED' ? 'status-dispatched' : 'bg-slate-100 text-slate-600';
+
+                    const card = document.createElement('div');
+                    card.className = 'roll-card';
+                    card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="font-bold text-lg text-slate-800">#${roll.id}</span>
+                        <span class="status-badge ${statusClass}">${roll.state}</span>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Type</span>
+                            <span class="font-medium text-slate-700">${roll.yarn_type || '-'}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Lot No</span>
+                            <span class="font-medium text-slate-700">${roll.lot_number || '-'}</span>
+                        </div>
+                        <div class="flex justify-between border-t border-slate-100 pt-2 mt-2">
+                             <span class="text-slate-500">Location</span>
+                             <span class="font-medium text-slate-700">Rack ${roll.rack_id || '?'} / Bin ${roll.bin || '?'}</span>
+                        </div>
+                    </div>
+                `;
+                    grid.appendChild(card);
+                });
+            }
+
+            window.applyFilter = function (filterType) {
+                currentFilter = filterType;
+                let filtered = [];
+
+                document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+
+                if (filterType === 'all') {
+                    filtered = allRolls;
+                    document.getElementById('grid-title').textContent = 'All Yarn Rolls';
+                } else if (filterType === 'reserved') {
+                    // Group by Order
+                    const grouped = {};
+                    reservedRollsFromCollection.filter(r => String(r.state).toLowerCase() === 'reserved').forEach(r => {
+                        const oid = r.order_id || 'UNKNOWN';
+                        if (!grouped[oid]) {
+                            const orderObj = allOrders.find(o => o.id === oid) || {};
+                            grouped[oid] = {
+                                order_id: oid,
+                                customer_name: orderObj.customer_name || 'Unknown',
+                                rolls: [],
+                                isOrderGroup: true
+                            };
+                        }
+                        grouped[oid].rolls.push(r);
+                    });
+                    filtered = Object.values(grouped);
+                    document.getElementById('grid-title').textContent = 'Reserved Orders';
+                } else if (filterType === 'picked') {
+                    const grouped = {};
+                    reservedRollsFromCollection.filter(r => String(r.state).toLowerCase() === 'moved').forEach(r => {
+                        const oid = r.order_id || 'UNKNOWN';
+                        if (!grouped[oid]) {
+                            const orderObj = allOrders.find(o => o.id === oid) || {};
+                            grouped[oid] = {
+                                order_id: oid,
+                                customer_name: orderObj.customer_name || 'Unknown',
+                                rolls: [],
+                                isOrderGroup: true
+                            };
+                        }
+                        grouped[oid].rolls.push(r);
+                    });
+                    filtered = Object.values(grouped);
+                    document.getElementById('grid-title').textContent = 'Picked Orders';
+                } else if (filterType === 'dispatched') {
+                    filtered = allRolls.filter(r => r.state === 'DISPATCHED');
+                    document.getElementById('grid-title').textContent = 'Dispatched Yarns';
+                }
+
+                // EXTENDED FILTERS
+                const search = document.getElementById('filter-search').value.toLowerCase();
+                const bin = document.getElementById('filter-bin').value.toLowerCase();
+                const rack = document.getElementById('filter-rack').value.toLowerCase();
+                const type = document.getElementById('filter-type').value.toLowerCase();
+
+                filtered = filtered.filter(r => {
+                    const searchStr = r.isOrderGroup ?
+                        `${r.customer_name} ${r.order_id} ${r.rolls.map(rr => rr.yarn_type).join(' ')}` :
+                        `${r.id} ${r.yarn_type} ${r.lot_number}`;
+
+                    const matchSearch = !search || searchStr.toLowerCase().includes(search);
+
+                    if (r.isOrderGroup) return matchSearch;
+
+                    const matchBin = !bin || String(r.bin || '').toLowerCase().includes(bin);
+                    const matchRack = !rack || String(r.rack_id || '').toLowerCase().includes(rack);
+                    const matchType = !type || (r.yarn_type || '').toLowerCase() === type.toLowerCase();
+
+                    return matchSearch && matchBin && matchRack && matchType;
+                });
+
+                // Update the Warehouse Visuals to reflect yarnRolls data
+                const typeFilter = document.getElementById('filter-type').value;
+                const stats = calculateWarehouseStats(allRolls);
+                // PASS the type filter to the renderer
+                renderWarehouseBreakdown(stats, typeFilter);
+
+                renderGrid(filtered);
+            };
+
+            // Initialize Listeners
+            ['filter-search', 'filter-bin', 'filter-rack'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', () => applyFilter(currentFilter));
+            });
+
+            const syncTypeFilters = (e) => {
+                const val = e.target.value;
+                document.getElementById('filter-type').value = val;
+                document.getElementById('warehouse-filter-type').value = val;
+                applyFilter(currentFilter);
+            };
+
+            ['filter-type', 'warehouse-filter-type'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', syncTypeFilters);
+            });
+
+            // Initial data load
+            fetchData();
+        </script>
+</body>
+
+</html>

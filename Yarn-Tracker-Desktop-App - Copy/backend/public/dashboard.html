@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Yarn | S.A. Textiles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at top right, var(--surface-color), var(--bg-color));
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .input-field {
+            background: rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent);
+            background: rgba(0, 0, 0, 0.2);
+        }
+    </style>
+    <link rel="stylesheet" href="/navbar.css">
+    <script src="/navbar.js"></script>
+</head>
+
+<body class="flex flex-col min-h-screen">
+    <div id="navbar-placeholder"></div>
+    <div class="flex-1 flex items-center justify-center p-6">
+        <div class="max-w-md w-full">
+            <div class="glass p-10 shadow-2xl">
+                <div class="text-center mb-10">
+                    <h1 class="text-4xl font-bold tracking-tight mb-2 text-slate-800">Place Order</h1>
+                    <p class="text-slate-500">Enter your requirements below</p>
+                </div>
+
+                <form id="orderForm" class="space-y-6">
+                    <div>
+                        <label class="block text-slate-500 text-sm font-medium mb-2">Customer Name</label>
+                        <input type="text" id="customer_name" required
+                            class="w-full p-4 rounded-xl input-field focus:outline-none focus:ring-1 focus:ring-orange-500"
+                            placeholder="e.g. S.A. Textiles Ltd.">
+                    </div>
+
+                    <div id="itemsContainer" class="space-y-4">
+                        <div class="item-row glass p-4 rounded-2xl border border-orange-100/50 relative">
+                            <div class="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-slate-500 text-xs font-medium mb-1 uppercase tracking-wider">Yarn
+                                        Quality</label>
+                                    <select required name="yarn_type" onchange="updateRowStock(this)"
+                                        class="yarn-type-select w-full p-4 rounded-xl input-field focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
+                                        <option value="" selected disabled>Select</option>
+                                        <option value="" disabled>Loading qualities...</option>
+                                    </select>
+                                    <div class="row-stock-info mt-1 text-[10px] font-bold text-orange-600 h-4 px-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-slate-500 text-xs font-medium mb-1 uppercase tracking-wider">Quantity
+                                        (Rolls)</label>
+                                    <input type="number" required name="quantity" min="1"
+                                        class="w-full p-4 rounded-xl input-field focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                        value="1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="addItemRow()"
+                        class="w-full py-3 border-2 border-dashed border-orange-200 text-orange-500 rounded-xl font-bold hover:bg-orange-50 transition-all flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                            </path>
+                        </svg>
+                        ADD ANOTHER ITEM
+                    </button>
+
+                    <div class="pt-4">
+                        <button type="submit" id="submitBtn"
+                            class="w-full py-4 btn-primary text-white font-bold rounded-xl shadow-lg flex justify-center items-center space-x-2">
+                            <span>CONFIRM ORDER</span>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+
+                <div id="successMsg"
+                    class="hidden mt-8 text-center p-6 bg-orange-100/50 border border-orange-200/50 rounded-2xl">
+                    <div class="text-orange-600 font-bold mb-1">Order Placed Successfully!</div>
+                    <p class="text-secondary text-sm">Waiting for admin approval. We will notify you soon.</p>
+                    <button onclick="location.reload()" class="mt-4 text-sm text-accent hover:underline">Place another
+                        order</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast"
+            class="fixed bottom-8 right-8 transform translate-y-20 opacity-0 transition-all duration-300 glass border-orange-500 p-4 min-w-[300px] z-50 bg-white">
+            <p id="toastMessage" class="text-slate-800 text-sm"></p>
+        </div>
+
+        <script>
+            let cachedQualities = [];
+
+            function showToast(message, isError = false) {
+                const toast = document.getElementById('toast');
+                const msg = document.getElementById('toastMessage');
+                msg.innerText = message;
+                toast.style.borderColor = isError ? '#f56565' : '#f97316';
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 3000);
+            }
+
+            function addItemRow() {
+                const container = document.getElementById('itemsContainer');
+                const row = document.createElement('div');
+                row.className = 'item-row glass p-4 rounded-2xl border border-orange-100/50 relative group animate-in slide-in-from-top-2 duration-300';
+
+                let qualityOptions = '<option value="" selected disabled>Select</option>';
+                if (cachedQualities.length > 0) {
+                    qualityOptions += cachedQualities.map(t =>
+                        `<option value="${t}">${t} (${typeCounts[t]} rolls)</option>`
+                    ).join('');
+                } else {
+                    qualityOptions += '<option disabled>Loading...</option>';
+                }
+
+                row.innerHTML = `
+                    <button type="button" onclick="this.parentElement.remove()" 
+                        class="absolute -right-2 -top-2 bg-white text-rose-500 rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity border border-rose-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-slate-500 text-sm font-medium mb-1 uppercase tracking-wider" style="font-size: 0.65rem;">Yarn Quality</label>
+                            <select required name="yarn_type" onchange="updateRowStock(this)"
+                                class="yarn-type-select w-full p-4 rounded-xl input-field focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
+                                ${qualityOptions}
+                            </select>
+                            <div class="row-stock-info mt-1 text-[10px] font-bold text-orange-600 h-4 px-1"></div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-500 text-sm font-medium mb-1 uppercase tracking-wider" style="font-size: 0.65rem;">Quantity (Rolls)</label>
+                            <input type="number" required name="quantity" min="1"
+                                class="w-full p-4 rounded-xl input-field focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                value="1">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            }
+
+            document.getElementById('orderForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                const originalContent = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<span>SENDING...</span>';
+
+                const rows = document.querySelectorAll('.item-row');
+                const items = Array.from(rows).map(row => ({
+                    yarn_type: row.querySelector('[name="yarn_type"]').value,
+                    quantity: row.querySelector('[name="quantity"]').value
+                }));
+
+                const data = {
+                    customer_name: document.getElementById('customer_name').value,
+                    items: items
+                };
+
+                try {
+                    const response = await fetch('/api/orders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        document.getElementById('orderForm').classList.add('hidden');
+                        document.getElementById('successMsg').classList.remove('hidden');
+                    } else {
+                        const error = await response.json();
+                        showToast(error.error || 'Failed to place order', true);
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalContent;
+                    }
+                } catch (err) {
+                    showToast('Network error', true);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalContent;
+                }
+            };
+
+            let typeCounts = {};
+
+            async function populateQualities() {
+                try {
+                    const response = await fetch('/api/rolls');
+                    const rolls = await response.json();
+
+                    // Filter available rolls and calculate counts
+                    const availableRolls = rolls.filter(r =>
+                        !r.id.toLowerCase().includes('test') &&
+                        (r.state === 'IN STOCK' || r.state === 'AVAILABLE' || !r.state)
+                    );
+
+                    typeCounts = {};
+                    availableRolls.forEach(r => {
+                        const type = r.yarn_type || 'Unknown';
+                        typeCounts[type] = (typeCounts[type] || 0) + 1;
+                    });
+
+                    cachedQualities = Object.keys(typeCounts).sort();
+
+                    const selects = document.querySelectorAll('.yarn-type-select');
+                    selects.forEach(select => {
+                        const currentVal = select.value;
+                        let options = '<option value="" selected disabled>Select</option>';
+
+                        if (cachedQualities.length === 0) {
+                            options = '<option value="" disabled>No qualities available</option>';
+                        } else {
+                            options += cachedQualities.map(t =>
+                                `<option value="${t}" ${t === currentVal ? 'selected' : ''}>${t} (${typeCounts[t]} rolls)</option>`
+                            ).join('');
+                        }
+                        select.innerHTML = options;
+                        updateRowStock(select);
+                    });
+                } catch (err) {
+                    console.error('Failed to load qualities:', err);
+                }
+            }
+
+            function updateRowStock(select) {
+                const type = select.value;
+                const container = select.parentElement;
+                const infoDiv = container.querySelector('.row-stock-info');
+                if (infoDiv) {
+                    if (type && typeCounts[type] !== undefined) {
+                        infoDiv.innerText = `● ${typeCounts[type]} rolls available in warehouse`;
+                    } else {
+                        infoDiv.innerText = '';
+                    }
+                }
+            }
+
+            populateQualities();
+        </script>
+</body>
+
+</html>
