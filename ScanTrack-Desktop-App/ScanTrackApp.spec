@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='YarnRollTrackerApp',
+    name='ScanTrackApp',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -36,3 +36,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
