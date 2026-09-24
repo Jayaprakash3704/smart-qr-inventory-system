@@ -1171,6 +1171,14 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
+// Catch-all route for React SPA
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log('\n🚀 ═══════════════════════════════════════════════════════');
