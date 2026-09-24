@@ -1135,14 +1135,40 @@ app.post('/api/rolls/bulk', async (req, res) => {
 });
 
 
-// --- 404 HANDLER FOR API ---
-app.all('/api/*', (req, res) => {
-  res.status(404).json({ error: `API Route Not Found: ${req.method} ${req.url}` });
+// ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
+
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const snap = await getDocs(collection(db, 'notifications'));
+    const notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    notifs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(notifs);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
 });
 
-// Fallback to index.html for React Router (Single Page App)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+app.post('/api/notifications/mark-all-read', async (req, res) => {
+  try {
+    const snap = await getDocs(collection(db, 'notifications'));
+    await Promise.all(snap.docs.filter(d => !d.data().is_read).map(d => updateDoc(d.ref, { is_read: true })));
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to mark notifications' });
+  }
+});
+
+// ─── TRANSACTIONS ───────────────────────────────────────────────────────────
+
+app.get('/api/transactions', async (req, res) => {
+  try {
+    const snap = await getDocs(collection(db, 'scanHistory'));
+    const txns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    txns.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    res.json(txns.slice(0, 100));
+  } catch (e) {
+    res.json([]);
+  }
 });
 
 // Start server

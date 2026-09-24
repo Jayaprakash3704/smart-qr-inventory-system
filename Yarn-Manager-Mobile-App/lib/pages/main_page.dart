@@ -27,7 +27,7 @@ class _MainPageState extends State<MainPage> {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-            title: const Text('Yarn Scanner'),
+            title: const Text('ScanTrack'),
             actions: [
                 IconButton(
                     icon: const Icon(Icons.settings),
@@ -57,32 +57,32 @@ class _MainPageState extends State<MainPage> {
              _fancyCard(
               context,
               title: 'Reserved List',
-              subtitle: 'Move yarn from rack to floor',
+              subtitle: 'Move items from rack to floor',
               icon: Icons.inventory_2_outlined,
-              colors: [Colors.greenAccent, Colors.green.shade700],
+              colors: [Colors.orange.shade300, Colors.orange.shade700],
               onTap: () => Navigator.pushNamed(context, '/reserved'),
             ),
             const SizedBox(height: 16),
             _fancyCard(
               context,
               title: 'Dispatch List',
-              subtitle: 'Verify and dispatch moved yarn',
+              subtitle: 'Verify and dispatch moved items',
               icon: Icons.local_shipping_outlined,
-              colors: [Colors.orangeAccent, Colors.deepOrange],
+              colors: [Colors.blueGrey.shade400, Colors.blueGrey.shade700],
               onTap: () => Navigator.pushNamed(context, '/dispatch'),
             ),
             const SizedBox(height: 16),
             _fancyCard(
               context,
-              title: 'Add Yarn',
-              subtitle: 'Scan QR to add yarn to inventory',
+              title: 'Add Item',
+              subtitle: 'Scan QR to add item to inventory',
               icon: Icons.qr_code_scanner,
               colors: [Colors.pinkAccent.shade100, Colors.red.shade700],
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const ScanCodePage(
-                    title: 'Add New Yarn',
+                    title: 'Add New Item',
                     isAddMode: true,
                   ),
                 ),
@@ -93,7 +93,7 @@ class _MainPageState extends State<MainPage> {
         SizedBox(height: 70),
         // Footer text at the bottom
         Text(
-          '© 2026 Yarn Scanner. All rights reserved.',
+          '© 2026 ScanTrack. All rights reserved.',
           style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           textAlign: TextAlign.center,
         ),

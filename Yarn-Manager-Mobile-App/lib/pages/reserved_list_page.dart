@@ -35,7 +35,7 @@ class _ReservedListPageState extends State<ReservedListPage>
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Colors.green.shade700;
+    final primaryColor = Colors.orange.shade500;
 
     return SafeArea(child: Scaffold(
         backgroundColor: Colors.white, // Scaffold background
@@ -43,7 +43,7 @@ class _ReservedListPageState extends State<ReservedListPage>
           elevation: 1,
           backgroundColor: Colors.white,
           title: const Text(
-            'Reserved Yarns',
+            'Pick List',
             style: TextStyle(color: Colors.black),
           ),
           centerTitle: true,
@@ -59,7 +59,7 @@ class _ReservedListPageState extends State<ReservedListPage>
                 padding: const EdgeInsets.all(16),
                 child: TextField(
                   decoration: InputDecoration(
-                    hintText: 'Search by Yarn ID...',
+                    hintText: 'Search by Item ID...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
                     fillColor: Colors.white,

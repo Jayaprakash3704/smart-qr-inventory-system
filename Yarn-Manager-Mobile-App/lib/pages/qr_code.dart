@@ -91,8 +91,8 @@ class _ScanCodePageState extends State<ScanCodePage>
       //     // Auto-allocation is now handled in the confirmation step
       // }
 
-      // Fallback: Treat as Yarn Scan
-      await _processYarnScan(qrData);
+      // Fallback: Treat as Item Scan
+      await _processItemScan(qrData);
     } catch (e) {
       _showToast('Error: $e', isError: true);
     } finally {
@@ -108,7 +108,7 @@ class _ScanCodePageState extends State<ScanCodePage>
   // --- Actions ---
   // Rack/Bin actions removed for auto-allocation flow
 
-  Future<void> _processYarnScan(String qr) async {
+  Future<void> _processItemScan(String qr) async {
     // Default behavior (View Details / Verify)
     controller?.stop();
     setState(() => isScanning = false);
@@ -275,9 +275,9 @@ class _ScanCodePageState extends State<ScanCodePage>
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            'Scan Yarn QR Code',
+            'Scan Item QR Code',
             style: TextStyle(
-              color: Colors.blue,
+              color: Colors.orange,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),

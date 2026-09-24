@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #f97316;
+  --color-primary-light: #ffedd5;
+  --color-slate-bg: #f8fafc;
+  --font-family-sans: 'Outfit', system-ui, sans-serif;
+}
+
+* {
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+
+body {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-orange {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(249,115,22,0); }
+}
+
+.animate-fade-in-up   { animation: fadeInUp 0.4s ease both; }
+.animate-slide-in-left { animation: slideInLeft 0.3s ease both; }
+.animate-pulse-orange  { animation: pulse-orange 2s infinite; }
+
+/* Card base */
+.card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+/* Input base */
+.input {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  background: white;
+  color: #1e293b;
+}
+.input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+}
+
+/* Btn primary */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: #f97316;
+  color: white;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 1px 3px rgba(249,115,22,0.3);
+}
+.btn-primary:hover  { background: #ea6a0a; box-shadow: 0 4px 12px rgba(249,115,22,0.35); }
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: white;
+  color: #475569;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+/* Status badges */
+.badge { display: inline-flex; align-items: center; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.badge-instock    { background: #dcfce7; color: #15803d; }
+.badge-low        { background: #fef3c7; color: #b45309; }
+.badge-out        { background: #fee2e2; color: #b91c1c; }
+.badge-reserved   { background: #dbeafe; color: #1d4ed8; }
+.badge-dispatched { background: #f3f4f6; color: #374151; }
+
+/* Modal */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  animation: fadeInUp 0.15s ease;
+}
+.modal-box {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+  animation: fadeInUp 0.25s cubic-bezier(0.16,1,0.3,1);
+}
+
+/* Sidebar nav item */
+.nav-item {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  color: #64748b;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+.nav-item:hover   { background: #f1f5f9; color: #1e293b; }
+.nav-item.active  { background: #ffedd5; color: #f97316; font-weight: 600; }

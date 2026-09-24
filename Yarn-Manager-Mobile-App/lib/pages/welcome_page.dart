@@ -95,12 +95,12 @@ class _WelcomePageState extends State<WelcomePage>
                               width: size.width * 0.35,
                               height: size.width * 0.35,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFF7A00),
+                                color: const Color(0xFFF97316),
                                 borderRadius: BorderRadius.circular(40),
                                 boxShadow: [
                                   BoxShadow(
                                     color: const Color(
-                                      0xFFFF7A00,
+                                      0xFFF97316,
                                     ).withValues(alpha: 0.3),
                                     blurRadius: 20 * _logoBounce.value,
                                     spreadRadius: 4 * _logoBounce.value,
@@ -129,7 +129,7 @@ class _WelcomePageState extends State<WelcomePage>
                         child: Column(
                           children: const [
                             Text(
-                              'Yarn Scanner',
+                              'ScanTrack',
                               style: TextStyle(
                                 color: Colors.black,
                                 fontSize: 28,
@@ -139,7 +139,7 @@ class _WelcomePageState extends State<WelcomePage>
                             SizedBox(height: 12),
                             Text(
                               textAlign: TextAlign.center,
-                              'Smart QR-based yarn inventory management',
+                              'Smart QR-based inventory management',
                               style: TextStyle(
                                 color: Colors.black54,
                                 fontSize: 16,
@@ -167,7 +167,7 @@ class _WelcomePageState extends State<WelcomePage>
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(30),
                               gradient: const LinearGradient(
-                                colors: [Color(0xFFFFA500), Color(0xFFFF7A00)],
+                                colors: [Color(0xFFFDBA74), Color(0xFFF97316)],
                               ),
                               boxShadow: [
                                 BoxShadow(

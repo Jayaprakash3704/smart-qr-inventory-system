@@ -17,15 +17,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Yarn Scanner',
+      title: 'ScanTrack Inventory',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF7A00),
-          primary: const Color(0xFFFF7A00),
-          secondary: const Color(0xFFFF9F43),
+          seedColor: const Color(0xFFF97316), // Orange 500
+          primary: const Color(0xFFF97316),
+          secondary: const Color(0xFF1E293B), // Slate 800
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,

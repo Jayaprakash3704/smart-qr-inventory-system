@@ -304,14 +304,14 @@ class _YarnDataPageState extends State<YarnDataPage> {
         }
 
         if (!mounted) return;
-        showAck(context, 'Yarn successfully dispatched!');
+        showAck(context, 'Item successfully dispatched!');
       } else {
         await yarnService.updateYarnStatus(
           widget.reservedDocId!,
           'waiting for dispatch',
         );
         if (!mounted) return;
-        showAck(context, 'Yarn successfully moved to dispatch!');
+        showAck(context, 'Item successfully moved to dispatch!');
       }
 
       await Future.delayed(const Duration(milliseconds: 500));
@@ -320,7 +320,7 @@ class _YarnDataPageState extends State<YarnDataPage> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted) showAck(context, 'Error processing yarn: $e');
+      if (mounted) showAck(context, 'Error processing item: $e');
     } finally {
       if (mounted) setState(() => isProcessing = false);
     }
@@ -359,7 +359,7 @@ class _YarnDataPageState extends State<YarnDataPage> {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(
-                'Yarn Details',
+                'Item Details',
                 style: pw.TextStyle(
                   fontSize: 24,
                   fontWeight: pw.FontWeight.bold,
@@ -402,11 +402,11 @@ class _YarnDataPageState extends State<YarnDataPage> {
 
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final folder = Directory('${dir.path}/YarnScanner');
+      final folder = Directory('${dir.path}/ScanTrack');
       if (!await folder.exists()) await folder.create();
 
       final uniqueId = DateTime.now().millisecondsSinceEpoch.toString();
-      final file = File('${folder.path}/yarn_$uniqueId.pdf');
+      final file = File('${folder.path}/item_$uniqueId.pdf');
       await file.writeAsBytes(await pdf.save());
 
       if (!mounted) return;
@@ -426,7 +426,7 @@ class _YarnDataPageState extends State<YarnDataPage> {
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white,
-          title: Text(widget.isAddMode ? 'Confirm Addition' : 'Yarn Details'),
+          title: Text(widget.isAddMode ? 'Confirm Addition' : 'Item Details'),
           automaticallyImplyLeading: false,
           actions: [
             IconButton(

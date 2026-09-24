@@ -103,7 +103,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                        'These rules apply to the auto-allocation logic when adding new yarn rolls.',
+                        'These rules apply to the auto-allocation logic when adding new inventory items.',
                         style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 20),
                     
@@ -114,7 +114,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     TextFormField(
                       controller: _maxRollsController,
                       decoration: const InputDecoration(
-                        labelText: 'Max Rolls per Bin (Count)',
+                        labelText: 'Max Items per Bin (Count)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.numbers),
                       ),
@@ -165,7 +165,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             : const Icon(Icons.save),
                         label: Text(_isSaving ? 'Saving...' : 'Save Settings'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: Colors.orange,
                           foregroundColor: Colors.white,
                           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
@@ -185,7 +185,7 @@ class _SettingsPageState extends State<SettingsPage> {
         Container(
           width: 4,
           height: 18,
-          color: Colors.blueAccent,
+          color: Colors.orange,
           margin: const EdgeInsets.only(right: 8),
         ),
         Text(

@@ -35,14 +35,14 @@ class _DispatchListPageState extends State<DispatchListPage>
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Colors.orange.shade400;
+    final primaryColor = Colors.orange.shade700;
 
     return SafeArea(child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         centerTitle: true,
         elevation: 0,
-        title: const Text('Dispatch Yarn', style: TextStyle(color: Colors.black)),
+        title: const Text('Dispatch Items', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         automaticallyImplyLeading: false,
         iconTheme: IconThemeData(color: primaryColor),
@@ -54,7 +54,7 @@ class _DispatchListPageState extends State<DispatchListPage>
             padding: const EdgeInsets.all(16),
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Search by Yarn ID...',
+                hintText: 'Search by Item ID...',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
