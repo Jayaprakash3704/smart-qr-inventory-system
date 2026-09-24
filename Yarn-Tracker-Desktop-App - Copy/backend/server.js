@@ -55,8 +55,8 @@ app.get('/api/health', (req, res) => {
 // Get all rolls
 app.get('/api/rolls', async (req, res) => {
   try {
-    console.log('\n📦 GET /api/rolls - Fetching all rolls from yarnRolls');
-    const q = query(collection(db, 'yarnRolls'), orderBy('production_date', 'desc'));
+    console.log('\n📦 GET /api/rolls - Fetching all rolls from items');
+    const q = query(collection(db, 'items'), orderBy('production_date', 'desc'));
     const querySnapshot = await getDocs(q);
 
     let rolls = querySnapshot.docs.map(doc => ({
@@ -65,7 +65,7 @@ app.get('/api/rolls', async (req, res) => {
       documentPath: doc.ref.path
     }));
 
-    console.log(`🔍 Found ${rolls.length} rolls in 'yarnRolls' collection.`);
+    console.log(`🔍 Found ${rolls.length} rolls in 'items' collection.`);
 
     // SELF-HEALING: If inventory is empty, fetch from potentially unsynced hierarchy or legacy collections
     if (rolls.length === 0) {
@@ -82,13 +82,13 @@ app.get('/api/rolls', async (req, res) => {
         console.log(`🛠️ Recovery: Found ${hierarchicalRolls.length} rolls via collectionGroup('rolls').`);
 
         // 2. Query legacy collection
-        const legacySnap = await getDocs(collection(db, 'yarnRolls'));
+        const legacySnap = await getDocs(collection(db, 'items'));
         const legacyRolls = legacySnap.docs.map(doc => ({
           ...doc.data(),
           firebaseId: doc.id,
           documentPath: doc.ref.path
         }));
-        console.log(`🛠️ Recovery: Found ${legacyRolls.length} rolls in legacy 'yarnRolls' collection.`);
+        console.log(`🛠️ Recovery: Found ${legacyRolls.length} rolls in legacy 'items' collection.`);
 
         // 3. Merge results (prefer hierarchical/newer data if ID collision occurs)
         const mergedMap = new Map();
@@ -238,7 +238,7 @@ app.post('/api/rolls', async (req, res) => {
 
     // 2. Legacy/Active Inventory Sync
     await setDoc(doc(db, 'inventory', rollId), rollData);
-    await setDoc(doc(db, 'yarnRolls', rollId), rollData);
+    await setDoc(doc(db, 'items', rollId), rollData);
 
     // 4. History log
     await logScan(rollId, 'CREATION', `Registered in ${rackLabel} / ${binLabel}`);
@@ -304,26 +304,26 @@ app.post('/api/rolls/update-state', async (req, res) => {
           // 2. Collection specific sync
           if (capitalizedState === 'DISPATCHED') {
             await deleteDoc(doc(db, 'inventory', id));
-            await deleteDoc(doc(db, 'reserved_collection', id));
-            await deleteDoc(doc(db, 'picking_collection', id));
+            await deleteDoc(doc(db, 'reserved_items', id));
+            await deleteDoc(doc(db, 'picked_items', id));
             await setDoc(doc(db, 'deliveries', id), { ...updatedData, delivered_at: now });
             await logScan(id, 'DELIVERY', 'Moved to deliveries');
           } else if (capitalizedState === 'RESERVED') {
-            await setDoc(doc(db, 'reserved_collection', id), updatedData);
-            await deleteDoc(doc(db, 'picking_collection', id));
+            await setDoc(doc(db, 'reserved_items', id), updatedData);
+            await deleteDoc(doc(db, 'picked_items', id));
             await setDoc(doc(db, 'inventory', id), updatedData);
             // Update Legacy Sync
-            await setDoc(doc(db, 'yarnRolls', id), { ...updatedData, state: capitalizedState }, { merge: true });
+            await setDoc(doc(db, 'items', id), { ...updatedData, state: capitalizedState }, { merge: true });
             await logScan(id, 'RESERVE', 'Roll reserved for order');
           } else if (capitalizedState === 'PICKED') {
-            await setDoc(doc(db, 'picking_collection', id), updatedData);
-            await deleteDoc(doc(db, 'reserved_collection', id));
+            await setDoc(doc(db, 'picked_items', id), updatedData);
+            await deleteDoc(doc(db, 'reserved_items', id));
             await setDoc(doc(db, 'inventory', id), updatedData);
             await logScan(id, 'PICK', 'Roll picked for dispatch');
           } else {
             if (capitalizedState === 'IN STOCK') {
-              await deleteDoc(doc(db, 'reserved_collection', id));
-              await deleteDoc(doc(db, 'picking_collection', id));
+              await deleteDoc(doc(db, 'reserved_items', id));
+              await deleteDoc(doc(db, 'picked_items', id));
             }
             await setDoc(doc(db, 'inventory', id), updatedData);
             await logScan(id, 'STATE_CHANGE', `State changed to ${capitalizedState}`);
@@ -357,7 +357,7 @@ app.post('/api/rolls/update-state', async (req, res) => {
 });
 
 // --- NEW ORDER MANAGEMENT COLLECTIONS ---
-const ordersCollection = collection(db, 'Order_collection');
+const ordersCollection = collection(db, 'orders');
 
 // 1. Create a new order
 app.post('/api/orders', async (req, res) => {
@@ -392,7 +392,7 @@ app.post('/api/orders', async (req, res) => {
       approvedAt: null
     };
 
-    await setDoc(doc(db, 'Order_collection', orderId), orderData);
+    await setDoc(doc(db, 'orders', orderId), orderData);
 
     // 2. Create a notification for the admin
     const notificationId = `NOTIF-${Date.now()}`;
@@ -442,7 +442,7 @@ app.get('/api/approved-orders', async (req, res) => {
 
 app.get('/api/reserved', async (req, res) => {
   try {
-    const querySnapshot = await getDocs(collection(db, 'reserved_collection'));
+    const querySnapshot = await getDocs(collection(db, 'reserved_items'));
     const reserved = querySnapshot.docs.map(doc => doc.data());
     res.json(reserved);
   } catch (error) {
@@ -463,8 +463,8 @@ app.get('/api/dispatched', async (req, res) => {
       firebaseId: doc.id
     }));
 
-    // 2. Fetch from 'yarnRolls' where state is 'DISPATCHED' (Recovery/Legacy sync)
-    const legacyQuery = query(collection(db, 'yarnRolls'), where('state', '==', 'DISPATCHED'));
+    // 2. Fetch from 'items' where state is 'DISPATCHED' (Recovery/Legacy sync)
+    const legacyQuery = query(collection(db, 'items'), where('state', '==', 'DISPATCHED'));
     const legacySnap = await getDocs(legacyQuery);
     const legacyDispatched = legacySnap.docs.map(doc => ({
       ...doc.data(),
@@ -497,7 +497,7 @@ app.post('/api/orders/:id/approve', async (req, res) => {
     const orderId = req.params.id;
     console.log(`\n✅ POST /api/orders/${orderId}/approve - Starting approval`);
 
-    const orderDocRef = doc(db, 'Order_collection', orderId);
+    const orderDocRef = doc(db, 'orders', orderId);
     const orderSnap = await getDoc(orderDocRef);
 
     if (!orderSnap.exists()) {
@@ -520,7 +520,7 @@ app.post('/api/orders/:id/approve', async (req, res) => {
     // Fetch all available rolls once
     const [invSnap, legacySnap] = await Promise.all([
       getDocs(query(collection(db, 'inventory'), where('state', '==', 'IN STOCK'))),
-      getDocs(collection(db, 'yarnRolls'))
+      getDocs(collection(db, 'items'))
     ]);
 
     const mergedMap = new Map();
@@ -585,8 +585,8 @@ app.post('/api/orders/:id/approve', async (req, res) => {
 
       try { await updateDoc(masterRef, { state: 'RESERVED', order_id: orderId, last_state_change: now }); } catch (e) { }
       await setDoc(inventoryDocRef, { state: 'RESERVED', order_id: orderId, last_state_change: now }, { merge: true });
-      try { await setDoc(doc(db, 'yarnRolls', roll.id), { ...updatedRollData, state: 'RESERVED' }, { merge: true }); } catch (e) { }
-      await setDoc(doc(db, 'reserved_collection', roll.id), updatedRollData);
+      try { await setDoc(doc(db, 'items', roll.id), { ...updatedRollData, state: 'RESERVED' }, { merge: true }); } catch (e) { }
+      await setDoc(doc(db, 'reserved_items', roll.id), updatedRollData);
       await logScan(roll.id, 'AUTO_RESERVE', `Automatically reserved for order ${orderId}`);
     }));
 
@@ -646,8 +646,8 @@ app.get('/api/dashboard-stats', async (req, res) => {
       return data.approvedAt && data.approvedAt >= startOfDay;
     }).length;
 
-    // 3. Reserved Rolls (Query from reserved_collection directly)
-    const reservedSnap = await getDocs(collection(db, 'reserved_collection'));
+    // 3. Reserved Rolls (Query from reserved_items directly)
+    const reservedSnap = await getDocs(collection(db, 'reserved_items'));
     const reservedCount = reservedSnap.docs.filter(d =>
       String(d.data().state || '').toLowerCase() === 'reserved'
     ).length;
@@ -903,7 +903,7 @@ app.delete('/api/orders/:id', async (req, res) => {
   try {
     const id = req.params.id;
     console.log(`\n🗑️ DELETE /api/orders/${id} - Removing order`);
-    await deleteDoc(doc(db, 'Order_collection', id));
+    await deleteDoc(doc(db, 'orders', id));
     res.json({ success: true, message: `Order ${id} deleted` });
   } catch (error) {
     console.error('Error deleting order:', error);
@@ -980,8 +980,8 @@ app.delete('/api/rolls/clear-all', async (req, res) => {
     console.log('\n🗑️ DELETE /api/rolls/clear-all - Clearing TOTAL system data');
 
     const collectionsToClear = [
-      'inventory', 'racks', 'yarnRolls', 'reserved_collection',
-      'picking_collection', 'deliveries', 'scanHistory', 'testing_qrs',
+      'inventory', 'racks', 'items', 'reserved_items',
+      'picked_items', 'deliveries', 'scanHistory', 'testing_qrs',
       'orders', 'notifications', 'approved_orders'
     ];
 
@@ -1102,7 +1102,7 @@ app.post('/api/rolls/bulk', async (req, res) => {
       await setDoc(doc(db, 'inventory', rollId), rollData);
 
       // Legacy Sync (for Dashboard visibility)
-      await setDoc(doc(db, 'yarnRolls', rollId), rollData);
+      await setDoc(doc(db, 'items', rollId), rollData);
 
       await logScan(rollId, 'BULK_CREATION', `Roll created in ${rackLabel} / ${binLabel}`);
 

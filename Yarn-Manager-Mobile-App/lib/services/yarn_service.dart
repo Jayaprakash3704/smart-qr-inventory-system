@@ -158,7 +158,7 @@ class YarnService {
     String rackId,
   ) async {
     final snap = await _db
-        .collection('yarnRolls')
+        .collection('items')
         .where('rack_id', isEqualTo: rackId)
         .where(
           'state',
@@ -195,7 +195,7 @@ class YarnService {
   // ================= YARN OPS =================
 
   Future<DocumentSnapshot> getYarn(String qr) {
-    return _db.collection('yarnRolls').doc(_getSafeId(qr)).get();
+    return _db.collection('items').doc(_getSafeId(qr)).get();
   }
 
   Future<DocumentSnapshot?> findYarnByContent(String content) async {
@@ -208,7 +208,7 @@ class YarnService {
     } catch (_) {}
 
     final qRaw = await _db
-        .collection('yarnRolls')
+        .collection('items')
         .where('rawQr', isEqualTo: raw)
         .limit(1)
         .get();
@@ -220,7 +220,7 @@ class YarnService {
         final possibleId = decoded['id'] ?? decoded['yarnId'] ?? decoded['ID'];
         if (possibleId != null) {
           final qJson = await _db
-              .collection('yarnRolls')
+              .collection('items')
               .where('id', isEqualTo: possibleId.toString())
               .limit(1)
               .get();
@@ -236,34 +236,34 @@ class YarnService {
 
   Stream<QuerySnapshot> getReservedYarns() {
     return _db
-        .collection('reserved_collection')
+        .collection('reserved_items')
         .where('state', whereIn: ['reserved', 'RESERVED'])
         .snapshots();
   }
 
   Stream<QuerySnapshot> getMovedYarns() {
     return _db
-        .collection('reserved_collection')
+        .collection('reserved_items')
         .where('state', whereIn: ['moved', 'MOVED', 'waiting for dispatch'])
         .snapshots();
   }
 
   Future<void> updateYarnStatus(String docId, String newStatus) {
-    return _db.collection('reserved_collection').doc(docId).update({
+    return _db.collection('reserved_items').doc(docId).update({
       'state': newStatus,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
   Future<void> updateYarnRollStatus(String docId, String newStatus) {
-    return _db.collection('yarnRolls').doc(docId).update({
+    return _db.collection('items').doc(docId).update({
       'state': newStatus,
       'last_state_change': DateTime.now().toUtc().toIso8601String(),
     });
   }
 
   Future<void> deleteReservedYarnById(String docId) async {
-    await _db.collection('reserved_collection').doc(docId).delete();
+    await _db.collection('reserved_items').doc(docId).delete();
   }
 
   // ================= ADD YARN =================
@@ -410,7 +410,7 @@ class YarnService {
         'rawQr': qr.trim(),
       };
 
-      batch.set(_db.collection('yarnRolls').doc(systemId), fullData);
+      batch.set(_db.collection('items').doc(systemId), fullData);
       debugPrint(
         'DEBUG: Added Roll ${i + 1}/$count to Batch (Rack $currentRack, Bin B$currentBin)',
       );
@@ -426,7 +426,7 @@ class YarnService {
 
     try {
       final snapshot = await _db
-          .collection('yarnRolls')
+          .collection('items')
           .orderBy('id', descending: true)
           .limit(1)
           .get();
@@ -474,6 +474,6 @@ class YarnService {
   }
 
   Future<void> deleteYarn(String qr) {
-    return _db.collection('yarnRolls').doc(_getSafeId(qr)).delete();
+    return _db.collection('items').doc(_getSafeId(qr)).delete();
   }
 }
