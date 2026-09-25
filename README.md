@@ -1,10 +1,10 @@
-# 📦 ScanTrack Inventory System v2.0
+# 📦 ScanTrack Inventory System
 
 > **ScanTrack** | End-to-end QR-based Inventory Management
 
-A complete, production-grade inventory system built for modern warehouses. ScanTrack V2 is a completely rebuilt REST-based system comprising a **Flutter mobile app** for warehouse floor staff (QR scanning, stock in/out) and a **React/Node.js web application** for managers and admins. 
+A complete, production-grade inventory system built for modern warehouses. ScanTrack is a powerful REST-based system comprising a **Flutter mobile app** for warehouse floor staff (QR scanning, stock in/out) and a **React/Node.js web application** for managers and admins. 
 
-Unlike V1 (which relied on Firebase and Desktop UI clients), V2 runs on a centralized **Node.js Express** backend with a unified REST API, perfect for scalable cloud deployments like AWS EC2.
+It runs on a centralized **Node.js Express** backend with a unified REST API, perfect for scalable cloud deployments like AWS EC2.
 
 ---
 
