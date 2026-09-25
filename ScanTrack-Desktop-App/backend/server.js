@@ -246,6 +246,41 @@ app.post('/api/products', requireAuth, requireRole('admin'), async (req, res) =>
   }
 });
 
+// QR Scan route
+app.post('/api/qr/scan', requireAuth, requireRole('staff'), (req, res) => {
+  const { qr_data } = req.body;
+  if (!qr_data) return res.status(400).json({ error: 'Missing qr_data' });
+
+  try {
+    let productId = qr_data;
+    
+    // Check if it's JSON (since we encode JSON into the QR code)
+    try {
+      const parsed = JSON.parse(qr_data);
+      if (parsed.id) productId = parsed.id;
+    } catch (_) {
+      // Not JSON, assume the raw string is the ID or SKU
+    }
+
+    // Try finding by ID first
+    let product = db.prepare('SELECT id FROM products WHERE id = ?').get(productId);
+    
+    // Fallback to SKU
+    if (!product) {
+      product = db.prepare('SELECT id FROM products WHERE sku = ?').get(productId);
+    }
+
+    if (product) {
+      res.json({ product_id: product.id });
+    } else {
+      res.status(404).json({ error: 'Product not found in database' });
+    }
+  } catch (err) {
+    console.error('QR Scan error:', err);
+    res.status(500).json({ error: 'Internal server error during QR scan' });
+  }
+});
+
 // Update product
 app.put('/api/products/:id', requireAuth, requireRole('admin'), (req, res) => {
   const { error, value } = productSchema.validate(req.body);
