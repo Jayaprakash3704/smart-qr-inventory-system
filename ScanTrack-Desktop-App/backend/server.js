@@ -489,7 +489,7 @@ app.post('/api/orders/:id/approve', requireAuth, requireRole('staff'), (req, res
       
       // Log transaction
       db.prepare('INSERT INTO transactions (id, product_id, product_name, sku, type, quantity, quantity_before, quantity_after, reason, notes, performed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-        'TXN-' + Date.now() + Math.floor(Math.random()*1000), product.id, product.name, product.sku, 'STOCK_OUT', item.quantity, product.quantity, newQty, 'ORDER_FULFILLMENT', \`Order \${id}\`, req.user.uid
+        'TXN-' + Date.now() + Math.floor(Math.random()*1000), product.id, product.name, product.sku, 'STOCK_OUT', item.quantity, product.quantity, newQty, 'ORDER_FULFILLMENT', `Order ${id}`, req.user.uid
       );
     }
     
