@@ -436,6 +436,91 @@ app.post('/api/qr/scan', requireAuth, requireRole('staff'), (req, res) => {
   res.json(product);
 });
 
+// ─── ORDERS ─────────────────────────────────────────────────────────────────
+app.get('/api/orders', requireAuth, requireRole('staff'), (req, res) => {
+  try {
+    const orders = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+app.post('/api/orders', requireAuth, requireRole('staff'), (req, res) => {
+  const { customer_name, items, notes } = req.body;
+  if (!customer_name || !items || items.length === 0) return res.status(400).json({ error: 'Missing required fields' });
+  
+  const id = 'ORD-' + Date.now();
+  try {
+    db.prepare('INSERT INTO orders (id, customer_name, items, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      id, customer_name, JSON.stringify(items), notes || '', 'PENDING', new Date().toISOString(), new Date().toISOString()
+    );
+    res.status(201).json({ success: true, id });
+  } catch (err) {
+    console.error('Order create error:', err);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+app.post('/api/orders/:id/approve', requireAuth, requireRole('staff'), (req, res) => {
+  const { id } = req.params;
+  const tx = db.transaction(() => {
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+    if (!order) throw new Error('NOT_FOUND');
+    if (order.status !== 'PENDING') throw new Error('INVALID_STATUS');
+    
+    let items;
+    try { items = JSON.parse(order.items); } catch (e) { items = []; }
+    
+    // Deduct stock for each item
+    for (const item of items) {
+      if (!item.product_id) continue;
+      const product = db.prepare('SELECT * FROM products WHERE id = ?').get(item.product_id);
+      if (!product) throw new Error('PRODUCT_NOT_FOUND:' + item.product_name);
+      
+      const newQty = product.quantity - parseInt(item.quantity || 0);
+      if (newQty < 0) throw new Error('INSUFFICIENT:' + product.name);
+      
+      let newStatus = product.status;
+      if (newQty === 0) newStatus = 'OUT_OF_STOCK';
+      else if (newQty <= (product.low_stock_threshold || 5)) newStatus = 'LOW_STOCK';
+      
+      db.prepare('UPDATE products SET quantity = ?, status = ?, updated_at = ? WHERE id = ?').run(newQty, newStatus, new Date().toISOString(), product.id);
+      
+      // Log transaction
+      db.prepare('INSERT INTO transactions (id, product_id, product_name, sku, type, quantity, quantity_before, quantity_after, reason, notes, performed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+        'TXN-' + Date.now() + Math.floor(Math.random()*1000), product.id, product.name, product.sku, 'STOCK_OUT', item.quantity, product.quantity, newQty, 'ORDER_FULFILLMENT', \`Order \${id}\`, req.user.uid
+      );
+    }
+    
+    db.prepare("UPDATE orders SET status = 'APPROVED', approved_at = ?, updated_at = ? WHERE id = ?").run(new Date().toISOString(), new Date().toISOString(), id);
+  });
+  
+  try {
+    tx();
+    res.json({ success: true });
+  } catch (err) {
+    if (err.message === 'NOT_FOUND') return res.status(404).json({ error: 'Order not found' });
+    if (err.message === 'INVALID_STATUS') return res.status(400).json({ error: 'Order is not pending' });
+    if (err.message.startsWith('INSUFFICIENT:')) return res.status(400).json({ error: 'Insufficient stock for ' + err.message.split(':')[1] });
+    if (err.message.startsWith('PRODUCT_NOT_FOUND:')) return res.status(400).json({ error: 'Product not found: ' + err.message.split(':')[1] });
+    console.error(err);
+    res.status(500).json({ error: 'Approval failed' });
+  }
+});
+
+app.post('/api/orders/:id/cancel', requireAuth, requireRole('staff'), (req, res) => {
+  const { id } = req.params;
+  try {
+    const info = db.prepare("UPDATE orders SET status = 'CANCELLED', updated_at = ? WHERE id = ? AND status = 'PENDING'").run(new Date().toISOString(), id);
+    if (info.changes === 0) return res.status(400).json({ error: 'Order not found or not pending' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Cancel failed' });
+  }
+});
+
 // ─── TRANSACTIONS & NOTIFICATIONS ───────────────────────────────────────────
 app.get('/api/transactions', requireAuth, requireRole('staff'), (req, res) => {
   const { product_id, limit: lim } = req.query;
