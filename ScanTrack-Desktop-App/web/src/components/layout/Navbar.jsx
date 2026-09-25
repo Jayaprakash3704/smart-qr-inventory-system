@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Package, QrCode, ArrowDownToLine,
   ArrowUpFromLine, BarChart3, ClipboardList, Bell,
-  Settings, ScanLine, ScanSearch,
+  Settings, ScanLine, ScanSearch, Users as UsersIcon,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
@@ -16,6 +16,7 @@ const nav = [
   { to: '/reports',      icon: BarChart3,         label: 'Reports'     },
   { to: '/orders',       icon: ClipboardList,     label: 'Orders'      },
   { to: '/notifications',icon: Bell,              label: 'Notifications'},
+  { to: '/users',        icon: UsersIcon,         label: 'Users'       },
   { to: '/settings',     icon: Settings,          label: 'Settings'    },
 ]
 import { useAuth } from '../../contexts/AuthContext'
@@ -49,7 +50,7 @@ export default function Navbar() {
         <div className="sidebar__section-label">Main Menu</div>
 
         {nav.map(({ to, icon: Icon, label }) => {
-          if (label === 'Settings' && currentUser?.role !== 'admin') return null;
+          if ((label === 'Settings' || label === 'Users') && currentUser?.role !== 'admin') return null;
           return (
             <NavLink
               key={to}

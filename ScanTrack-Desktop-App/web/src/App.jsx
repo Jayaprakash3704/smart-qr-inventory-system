@@ -13,6 +13,7 @@ import Reports from './pages/Reports'
 import Orders from './pages/Orders'
 import Notifications from './pages/Notifications'
 import Settings from './pages/Settings'
+import Users from './pages/Users'
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/reports"       element={<Reports />} />
           <Route path="/orders"        element={<Orders />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/users"         element={<PrivateRoute requireAdmin><Users /></PrivateRoute>} />
           <Route path="/settings"      element={<PrivateRoute requireAdmin><Settings /></PrivateRoute>} />
         </Route>
       </Routes>
