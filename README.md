@@ -121,15 +121,18 @@ npm start          # Starts Node.js on port 5000 serving both API & Web
 *(For production, we recommend using PM2 to keep the server running and Nginx to proxy port 80 to port 5000).*
 
 ### 2. The Mobile App
-Make sure your server is running and you know its IP address (e.g., `http://13.201.185.236`).
+Make sure your server is running and you know its IP address.
 
-```bash
-cd ScanTrack-Mobile-App
-flutter pub get
-flutter run
-```
-**Important:** On first launch, go to the **Settings** page in the mobile app and enter your server's IP address so it knows where to send API requests!
-
+1. Create a `.env` file in `ScanTrack-Mobile-App/`:
+   ```bash
+   API_URL=http://your-ec2-ip:5000/api
+   ```
+2. Run the app:
+   ```bash
+   cd ScanTrack-Mobile-App
+   flutter pub get
+   flutter run
+   ```
 ---
 
 *Built for Modern Warehouses — Smart Inventory with QR Intelligence*
