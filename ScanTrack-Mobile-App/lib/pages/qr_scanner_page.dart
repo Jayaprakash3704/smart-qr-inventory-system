@@ -127,7 +127,6 @@ class _QrScannerPageState extends State<QrScannerPage> {
                     decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
                     child: IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
-                      onFocusChange: null,
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),

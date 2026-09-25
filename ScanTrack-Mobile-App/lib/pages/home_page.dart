@@ -149,7 +149,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(context, 0),
+      bottomNavigationBar: buildBottomNav(context, 0),
     );
   }
 
@@ -273,7 +273,7 @@ class _HomePageState extends State<HomePage> {
 }
 
 // ── Bottom Nav helper (shared) ────────────────────────────────────────
-Widget _buildBottomNav(BuildContext context, int current) {
+Widget buildBottomNav(BuildContext context, int current) {
   final items = [
     {'icon': Icons.home_outlined, 'activeIcon': Icons.home, 'label': 'Home', 'route': '/home'},
     {'icon': Icons.inventory_2_outlined, 'activeIcon': Icons.inventory_2, 'label': 'Inventory', 'route': '/inventory'},

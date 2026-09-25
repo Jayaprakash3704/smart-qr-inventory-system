@@ -75,26 +75,6 @@ class ScanTrackApp extends StatelessWidget {
     );
   }
 
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        if (snapshot.hasData) {
-          return const WelcomePage(); // or HomePage
-        }
-        return const LoginPage();
-      },
-    );
-  }
-}
-
   ThemeData _buildTheme() {
     const brand = Color(0xFFF97316); // Orange-500
     const brandDark = Color(0xFFEA6D00);
@@ -188,6 +168,26 @@ class AuthWrapper extends StatelessWidget {
         backgroundColor: const Color(0xFF1E293B),
         contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
       ),
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasData) {
+          return const WelcomePage();
+        }
+        return const LoginPage();
+      },
     );
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_reader/services/api_service.dart';
-import 'package:qr_reader/pages/home_page.dart' show _buildBottomNav;
+import 'package:qr_reader/pages/home_page.dart' show buildBottomNav;
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -162,7 +162,7 @@ class _InventoryPageState extends State<InventoryPage> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context, 1),
+      bottomNavigationBar: buildBottomNav(context, 1),
     );
   }
 
