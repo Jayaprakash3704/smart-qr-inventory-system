@@ -1,122 +1,159 @@
 import { useState } from 'react'
-import { Settings as SettingsIcon, Server, Bell, Database, Save, CheckCircle } from 'lucide-react'
+import { Settings as SettingsIcon, Bell, Package, Shield, Info, Users, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-const SECTIONS = [
-  {
-    title: 'API Configuration',
-    icon: Server,
-    fields: [
-      { id: 'api_url',        label: 'Backend API URL',       placeholder: 'http://localhost:5000', type: 'text' },
-      { id: 'refresh_interval', label: 'Auto-refresh (seconds)', placeholder: '60', type: 'number' },
-    ],
-  },
-  {
-    title: 'Inventory Rules',
-    icon: Database,
-    fields: [
-      { id: 'low_stock_threshold', label: 'Default Low-Stock Threshold', placeholder: '10', type: 'number' },
-      { id: 'bin_capacity',         label: 'Default Bin Capacity',        placeholder: '10', type: 'number' },
-    ],
-  },
-  {
-    title: 'Notifications',
-    icon: Bell,
-    fields: [
-      { id: 'notif_low_stock', label: 'Low-Stock Alerts', type: 'toggle' },
-      { id: 'notif_orders',    label: 'New Order Alerts', type: 'toggle' },
-    ],
-  },
-]
+import axios from 'axios'
 
 export default function Settings() {
-  const [values, setValues] = useState({
-    api_url: 'http://localhost:5000',
-    refresh_interval: '60',
-    low_stock_threshold: '10',
-    bin_capacity: '10',
-    notif_low_stock: true,
-    notif_orders: true,
-  })
-  const [saved, setSaved] = useState(false)
+  const [lowStockThreshold, setLowStockThreshold] = useState(
+    parseInt(localStorage.getItem('scantrack_low_threshold') || '5')
+  )
+  const [appName, setAppName] = useState(localStorage.getItem('scantrack_app_name') || 'ScanTrack')
+  const [currency, setCurrency] = useState(localStorage.getItem('scantrack_currency') || '₹')
+  const [autoRefresh, setAutoRefresh] = useState(localStorage.getItem('scantrack_auto_refresh') !== 'false')
 
-  const save = () => {
-    localStorage.setItem('scantrack_settings', JSON.stringify(values))
-    setSaved(true)
+  // User Management State
+  const [newUserEmail, setNewUserEmail] = useState('')
+  const [newUserPassword, setNewUserPassword] = useState('')
+  const [newUserRole, setNewUserRole] = useState('staff')
+  const [loadingUser, setLoadingUser] = useState(false)
+
+  const saveSettings = () => {
+    localStorage.setItem('scantrack_low_threshold', String(lowStockThreshold))
+    localStorage.setItem('scantrack_app_name', appName)
+    localStorage.setItem('scantrack_currency', currency)
+    localStorage.setItem('scantrack_auto_refresh', String(autoRefresh))
     toast.success('Settings saved!')
-    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleAddUser = async (e) => {
+    e.preventDefault()
+    if (!newUserEmail || !newUserPassword) return toast.error('Email and password required')
+    setLoadingUser(true)
+    try {
+      await axios.post('/api/users', { email: newUserEmail, password: newUserPassword, role: newUserRole })
+      toast.success('User created successfully!')
+      setNewUserEmail('')
+      setNewUserPassword('')
+      setNewUserRole('staff')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create user')
+    } finally {
+      setLoadingUser(false)
+    }
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="card p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
-            <SettingsIcon size={22} className="text-slate-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-800">Settings</h2>
-            <p className="text-sm text-slate-400">Configure ScanTrack Inventory</p>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40 }}>
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1>Settings</h1>
+          <p>Configure ScanTrack preferences and manage system access</p>
         </div>
       </div>
 
-      {/* Sections */}
-      {SECTIONS.map(({ title, icon: Icon, fields }) => (
-        <div key={title} className="card p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center">
-              <Icon size={15} className="text-orange-500" />
-            </div>
-            <h3 className="font-bold text-slate-700">{title}</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+        {/* User Management */}
+        <div className="card card-p" style={{ gridColumn: '1 / -1' }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="icon-box icon-box-md icon-box-purple"><Users size={18} /></div>
+            <h3 className="font-semibold text-heading">User Management</h3>
           </div>
-          <div className="space-y-4">
-            {fields.map(f => (
-              <div key={f.id}>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">{f.label}</label>
-                {f.type === 'toggle' ? (
-                  <button
-                    onClick={() => setValues(p => ({ ...p, [f.id]: !p[f.id] }))}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${values[f.id] ? 'bg-orange-500' : 'bg-slate-200'}`}>
-                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${values[f.id] ? 'translate-x-5' : ''}`} />
-                  </button>
-                ) : (
-                  <input
-                    type={f.type}
-                    placeholder={f.placeholder}
-                    value={values[f.id] || ''}
-                    onChange={e => setValues(p => ({ ...p, [f.id]: e.target.value }))}
-                    className="input"
-                  />
-                )}
+          <form onSubmit={handleAddUser} style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div className="form-group" style={{ flex: 1, minWidth: 200 }}>
+              <label className="form-label">Email</label>
+              <input type="email" className="input" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} placeholder="user@example.com" required />
+            </div>
+            <div className="form-group" style={{ flex: 1, minWidth: 200 }}>
+              <label className="form-label">Password</label>
+              <input type="password" className="input" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} placeholder="Min 6 characters" required minLength="6" />
+            </div>
+            <div className="form-group" style={{ flex: 1, minWidth: 150 }}>
+              <label className="form-label">Role</label>
+              <select className="input" value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
+                <option value="staff">Staff (Inventory only)</option>
+                <option value="admin">Admin (Full Access)</option>
+              </select>
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={loadingUser} style={{ height: 38 }}>
+              <Plus size={16} /> {loadingUser ? 'Adding...' : 'Add User'}
+            </button>
+          </form>
+          <div className="form-hint" style={{ marginTop: 12 }}>New users will be created in Firebase Auth and granted access in the SQLite database automatically.</div>
+        </div>
+
+        {/* General Settings */}
+        <div className="card card-p">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="icon-box icon-box-md icon-box-brand"><SettingsIcon size={18} /></div>
+            <h3 className="font-semibold text-heading">General</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="form-group">
+              <label className="form-label">Application Name</label>
+              <input className="input" value={appName} onChange={e => setAppName(e.target.value)} placeholder="ScanTrack" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Currency Symbol</label>
+              <select className="input" value={currency} onChange={e => setCurrency(e.target.value)}>
+                {['₹', '$', '€', '£', '¥', 'AED', 'SGD'].map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--gray-100)' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)' }}>Auto-refresh data</div>
+                <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Automatically refresh inventory data every minute</div>
+              </div>
+              <button
+                onClick={() => setAutoRefresh(v => !v)}
+                style={{
+                  width: 44, height: 24, borderRadius: 12,
+                  background: autoRefresh ? 'var(--brand)' : 'var(--gray-300)',
+                  border: 'none', cursor: 'pointer',
+                  position: 'relative', transition: 'background 0.2s',
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 2,
+                  left: autoRefresh ? 22 : 2,
+                  width: 20, height: 20,
+                  borderRadius: '50%', background: 'white',
+                  transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* System Info */}
+        <div className="card card-p">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="icon-box icon-box-md icon-box-gray"><Info size={18} /></div>
+            <h3 className="font-semibold text-heading">System Information</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              ['Application', 'ScanTrack QR Inventory'],
+              ['Version', '2.0.0'],
+              ['Backend', 'Node.js + Express + Firebase Admin'],
+              ['Database', 'SQLite (WAL Mode)'],
+              ['Frontend', 'React 19 + Vite'],
+              ['Authentication', 'Firebase Auth (JWT)'],
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--gray-100)' }}>
+                <span style={{ fontSize: 12, color: 'var(--gray-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)' }}>{value}</span>
               </div>
             ))}
           </div>
         </div>
-      ))}
 
-      {/* System info */}
-      <div className="card p-6">
-        <h3 className="font-bold text-slate-700 mb-4">System Info</h3>
-        <div className="space-y-2">
-          {[
-            { label: 'App Version',    value: 'ScanTrack v1.0.0' },
-            { label: 'Platform',       value: 'React + Node.js + Firebase' },
-            { label: 'Project ID',     value: 'WD004' },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between text-sm py-2 border-b border-slate-50 last:border-0">
-              <span className="text-slate-500">{label}</span>
-              <span className="font-semibold text-slate-700">{value}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
-      {/* Save */}
-      <div className="flex justify-end">
-        <button onClick={save} className="btn-primary px-8">
-          {saved ? <><CheckCircle size={15} /> Saved!</> : <><Save size={15} /> Save Settings</>}
+      {/* Save Button */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <button className="btn btn-primary btn-lg" onClick={saveSettings}>
+          <Shield size={16} /> Save Settings
         </button>
       </div>
     </div>

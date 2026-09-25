@@ -1,92 +1,138 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { Bell, BellOff, CheckCheck, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { Bell, CheckCheck, AlertTriangle, ShoppingCart, Info, RefreshCw } from 'lucide-react'
 
 const TYPE_ICONS = {
-  LOW_STOCK:       { icon: AlertTriangle, color: 'bg-amber-50 text-amber-600',  border: 'border-amber-200' },
-  ORDER_RECEIVED:  { icon: ShoppingCart,  color: 'bg-blue-50 text-blue-600',    border: 'border-blue-200' },
-  ORDER_PENDING:   { icon: ShoppingCart,  color: 'bg-orange-50 text-orange-500',border: 'border-orange-200' },
-  SYSTEM:          { icon: Info,          color: 'bg-slate-50 text-slate-600',   border: 'border-slate-200' },
+  LOW_STOCK:      '⚠️',
+  OUT_OF_STOCK:   '🚨',
+  STOCK_IN:       '📦',
+  STOCK_OUT:      '📤',
+  ORDER_PENDING:  '🛒',
+  ORDER_APPROVED: '✅',
+  INFO:           'ℹ️',
 }
 
 export default function Notifications() {
-  const queryClient = useQueryClient()
+  const qc = useQueryClient()
 
-  const { data: notifs = [], isLoading, refetch } = useQuery({
+  const { data: notifs = [], isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => axios.get('/api/notifications').then(r => r.data).catch(() => []),
-    refetchInterval: 20_000,
+    refetchInterval: 15_000,
   })
 
-  const markAll = useMutation({
-    mutationFn: () => axios.post('/api/notifications/mark-all-read').catch(() => {}),
-    onSuccess: () => { toast.success('All marked as read'); queryClient.invalidateQueries(['notifications', 'notifications-count']) },
-  })
+  const unread = notifs.filter(n => !n.isRead)
+  const read   = notifs.filter(n =>  n.isRead)
 
-  const unread = notifs.filter(n => !n.is_read).length
-  const sorted = [...notifs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const markAllRead = async () => {
+    try {
+      await axios.post('/api/notifications/mark-all-read')
+      toast.success('All notifications marked as read')
+      qc.invalidateQueries(['notifications'])
+      qc.invalidateQueries(['notifications-count'])
+    } catch {
+      toast.error('Failed to mark notifications')
+    }
+  }
+
+  const deleteNotif = async (id) => {
+    try {
+      await axios.delete(`/api/notifications/${id}`)
+      qc.invalidateQueries(['notifications'])
+    } catch {
+      toast.error('Failed to delete')
+    }
+  }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-slate-800">Notifications</h2>
-          {unread > 0 && (
-            <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{unread} new</span>
-          )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1>Notifications</h1>
+          <p>{unread.length} unread · {notifs.length} total</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => refetch()} className="btn-secondary text-xs px-3 py-2">
-            <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+        {unread.length > 0 && (
+          <button className="btn btn-secondary btn-sm" onClick={markAllRead}>
+            <CheckCheck size={14} /> Mark all read
           </button>
-          {unread > 0 && (
-            <button onClick={() => markAll.mutate()} className="btn-secondary text-xs px-3 py-2">
-              <CheckCheck size={13} /> Mark all read
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* List */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-white rounded-2xl border border-slate-100 animate-pulse" />)}
-        </div>
-      ) : sorted.length > 0 ? (
-        <div className="space-y-3">
-          {sorted.map(n => {
-            const cfg = TYPE_ICONS[n.type] || TYPE_ICONS.SYSTEM
-            const Icon = cfg.icon
-            return (
-              <div key={n.id}
-                className={`card p-4 flex items-start gap-4 animate-fade-in-up border ${n.is_read ? 'opacity-60' : cfg.border}`}>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.color}`}>
-                  <Icon size={16} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-slate-800 text-sm">{n.title}</p>
-                    {!n.is_read && <div className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0 mt-1 animate-pulse-orange" />}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>
-                  <p className="text-[10px] text-slate-400 mt-1.5">
-                    {n.createdAt ? new Date(n.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
-                  </p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-20 card">
-          <Bell size={32} className="text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm">No notifications yet.</p>
-          <p className="text-slate-400 text-xs mt-1">Low-stock alerts and order alerts will appear here.</p>
+      {/* Unread */}
+      {unread.length > 0 && (
+        <div className="card">
+          <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--gray-100)', background: '#fff7ed' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              🔔 Unread ({unread.length})
+            </span>
+          </div>
+          {unread.map(n => (
+            <NotifItem key={n.id} notif={n} onDelete={deleteNotif} />
+          ))}
         </div>
       )}
+
+      {/* Read */}
+      {isLoading ? (
+        <div className="card card-p">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: 60, marginBottom: 8, borderRadius: 'var(--r-md)' }} />
+          ))}
+        </div>
+      ) : read.length > 0 ? (
+        <div className="card">
+          <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--gray-100)' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Read ({read.length})
+            </span>
+          </div>
+          {read.map(n => (
+            <NotifItem key={n.id} notif={n} onDelete={deleteNotif} />
+          ))}
+        </div>
+      ) : notifs.length === 0 && !isLoading ? (
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state__icon"><BellOff size={24} /></div>
+            <h3>No notifications</h3>
+            <p>System alerts will appear here when stock levels change or orders arrive</p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function NotifItem({ notif, onDelete }) {
+  const icon = TYPE_ICONS[notif.type] || 'ℹ️'
+  const isUnread = !notif.isRead
+  const time = notif.createdAt || notif.created_at
+
+  return (
+    <div className={`notif-item ${isUnread ? 'unread' : ''}`}>
+      <div style={{ fontSize: 22, flexShrink: 0, marginTop: 1 }}>{icon}</div>
+      <div className="flex-1 min-w-0">
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-800)', marginBottom: 2 }}>{notif.title}</div>
+        <div style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.4 }}>{notif.message}</div>
+        {time && (
+          <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 4 }}>
+            {new Date(time).toLocaleString()}
+          </div>
+        )}
+      </div>
+      {isUnread && <div className="notif-dot" />}
+      <button
+        className="btn btn-ghost btn-sm btn-icon"
+        onClick={() => onDelete(notif.id)}
+        title="Delete notification"
+        style={{ flexShrink: 0, opacity: 0.5 }}
+        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+        onMouseLeave={e => e.currentTarget.style.opacity = 0.5}
+      >
+        <Trash2 size={13} />
+      </button>
     </div>
   )
 }

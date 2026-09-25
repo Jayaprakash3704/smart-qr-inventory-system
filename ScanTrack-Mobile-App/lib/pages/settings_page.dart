@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:qr_reader/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -9,190 +10,124 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _db = FirebaseFirestore.instance;
-
-  final TextEditingController _maxRollsController = TextEditingController();
-  final TextEditingController _maxWeightController = TextEditingController();
-  final TextEditingController _maxBinsController = TextEditingController();
-
-  bool _isLoading = true;
-  bool _isSaving = false;
-  int _initialMaxRolls = 0;
-  int _initialMaxBins = 0;
+  final _urlCtrl = TextEditingController();
+  bool _testing = false;
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _urlCtrl.text = kApiBaseUrl;
+    _loadSavedUrl();
   }
-
-  Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
-    try {
-      final doc = await _db.collection('config').doc('inventory_rules').get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        _maxRollsController.text = (data['bin_capacity'] ?? 10).toString(); // Mapped to existing field
-        _maxWeightController.text = (data['max_bin_weight'] ?? 500.0).toString();
-        _maxBinsController.text = (data['max_bins'] ?? 50).toString();
-        
-        _initialMaxRolls = data['bin_capacity'] ?? 10;
-        _initialMaxBins = data['max_bins'] ?? 50;
-      } else {
-        // Defaults
-        _maxRollsController.text = '10';
-        _maxWeightController.text = '500.0';
-        _maxBinsController.text = '50';
-        
-        _initialMaxRolls = 10;
-        _initialMaxBins = 50;
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading settings: $e')));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+  
+  Future<void> _loadSavedUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('api_base_url');
+    if (saved != null && saved.isNotEmpty) {
+      setState(() => _urlCtrl.text = saved);
+      kApiBaseUrl = saved;
     }
   }
 
-  Future<void> _saveSettings() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _testAndSave() async {
+    setState(() => _testing = true);
     
-    setState(() => _isSaving = true);
-    try {
-      await _db.collection('config').doc('inventory_rules').set({
-        'bin_capacity': int.tryParse(_maxRollsController.text) ?? 10,
-        'max_bin_weight': double.tryParse(_maxWeightController.text) ?? 500.0,
-        'max_bins': int.tryParse(_maxBinsController.text) ?? 50,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+    // Temporarily set
+    final oldUrl = kApiBaseUrl;
+    kApiBaseUrl = _urlCtrl.text.trim();
+    
+    // Ensure no trailing slash
+    if (kApiBaseUrl.endsWith('/')) {
+      kApiBaseUrl = kApiBaseUrl.substring(0, kApiBaseUrl.length - 1);
+      _urlCtrl.text = kApiBaseUrl;
+    }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings saved successfully!'), backgroundColor: Colors.green),
-        );
-        Navigator.pop(context);
+    try {
+      final success = await ApiService().ping();
+      
+      if (success) {
+        // Save to preferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('api_base_url', kApiBaseUrl);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Connected & Saved Successfully!'),
+            backgroundColor: Color(0xFF22C55E),
+          ));
+        }
+      } else {
+        throw Exception('Ping returned false');
       }
     } catch (e) {
+      // Revert on failure
+      kApiBaseUrl = oldUrl;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving settings: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Connection failed: Check URL and network'),
+          backgroundColor: const Color(0xFFEF4444),
+        ));
       }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) setState(() => _testing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Inventory Settings')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Global Configuration',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                        'These rules apply to the auto-allocation logic when adding new inventory items.',
-                        style: TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 20),
-                    
-                    const SizedBox(height: 24),
-                    _buildSectionHeader('Bin Capacity Limits'),
-                    const SizedBox(height: 10),
-                    
-                    TextFormField(
-                      controller: _maxRollsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Max Items per Bin (Count)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.numbers),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (val) {
-                          if (val == null || val.isEmpty) return 'Required';
-                          final n = int.tryParse(val) ?? 0;
-                          if (n < _initialMaxRolls) return 'Capacity cannot be reduced (Current: $_initialMaxRolls)';
-                          return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _maxWeightController,
-                      decoration: const InputDecoration(
-                        labelText: 'Max Weight per Bin (kg)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.scale),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _maxBinsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Max Bins per Rack (Count)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.grid_goldenratio),
-                        helperText: 'Limits how many bins the auto-allocator searches per rack.',
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (val) {
-                          if (val == null || val.isEmpty) return 'Required';
-                          final n = int.tryParse(val) ?? 0;
-                          if (n < _initialMaxBins) return 'Bin count cannot be reduced (Current: $_initialMaxBins)';
-                          return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        icon: _isSaving
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.save),
-                        label: Text(_isSaving ? 'Saving...' : 'Save Settings'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        onPressed: _isSaving ? null : _saveSettings,
-                      ),
-                    ),
-                  ],
-                ),
+      appBar: AppBar(title: const Text('Settings')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Backend Connection', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+            const SizedBox(height: 8),
+            const Text('Enter the local IP address and port of your ScanTrack backend server (e.g., http://192.168.1.100:5000).', style: TextStyle(color: Color(0xFF64748B))),
+            
+            const SizedBox(height: 24),
+            
+            TextFormField(
+              controller: _urlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Server URL',
+                hintText: 'http://192.168.x.x:5000',
+                prefixIcon: Icon(Icons.link),
               ),
             ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 18,
-          color: Colors.orange,
-          margin: const EdgeInsets.only(right: 8),
+            
+            const SizedBox(height: 24),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _testing ? null : _testAndSave,
+                icon: _testing 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.wifi),
+                label: const Text('Test & Save Connection'),
+              ),
+            ),
+            
+            const SizedBox(height: 48),
+            
+            const Text('About ScanTrack', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+            const SizedBox(height: 16),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: Icon(Icons.qr_code_scanner, color: Theme.of(context).colorScheme.primary),
+              ),
+              title: const Text('Version', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('1.0.0 (Pure REST Rebuild)'),
+            ),
+          ],
         ),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-      ],
+      ),
     );
   }
 }

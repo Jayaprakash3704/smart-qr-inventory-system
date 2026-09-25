@@ -1,117 +1,271 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { Plus, ShoppingCart, CheckCircle, XCircle, Clock, Package, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { ClipboardList, CheckCircle, Loader2, RefreshCw, User, Package } from 'lucide-react'
 
-function OrderCard({ order, onApprove, loading }) {
-  const isPending = order.status === 'PENDING'
-  return (
-    <div className={`card p-5 animate-fade-in-up ${isPending ? 'border-orange-200' : ''}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="font-bold text-slate-800 text-sm">{order.id}</p>
-          <div className="flex items-center gap-1.5 mt-1">
-            <User size={12} className="text-slate-400" />
-            <p className="text-xs text-slate-500">{order.customer_name || 'Unknown Customer'}</p>
-          </div>
-        </div>
-        <span className={`badge ${isPending ? 'badge-low' : 'badge-instock'}`}>{order.status}</span>
-      </div>
-
-      {/* Items */}
-      <div className="space-y-1.5 mb-4">
-        {(order.items || [{ item_type: order.item_type, quantity: order.quantity }]).map((item, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs bg-slate-50 rounded-lg px-3 py-2">
-            <Package size={12} className="text-slate-400 flex-shrink-0" />
-            <span className="text-slate-700 font-medium flex-1 truncate">{item.item_type || item.name || '—'}</span>
-            <span className="text-orange-600 font-bold">×{item.quantity}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] text-slate-400">
-          {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-        </p>
-        {isPending && (
-          <button disabled={loading} onClick={() => onApprove(order.id)} className="btn-primary text-xs px-4 py-1.5">
-            {loading ? <Loader2 size={12} className="animate-spin" /> : <><CheckCircle size={12} /> Approve</>}
-          </button>
-        )}
-      </div>
-    </div>
-  )
+function OrderStatusBadge({ status }) {
+  const map = {
+    PENDING: ['badge-pending', 'Pending'],
+    APPROVED: ['badge-approved', 'Approved'],
+    CANCELLED: ['badge-cancelled', 'Cancelled'],
+  }
+  const [cls, label] = map[status] || ['badge-info', status]
+  return <span className={`badge ${cls}`}>{label}</span>
 }
 
 export default function Orders() {
-  const queryClient = useQueryClient()
-  const [approvingId, setApprovingId] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const qc = useQueryClient()
 
-  const { data: orders = [], isLoading, refetch } = useQuery({
+  const { data: orders = [], isLoading } = useQuery({
     queryKey: ['orders'],
     queryFn: () => axios.get('/api/orders').then(r => r.data).catch(() => []),
     refetchInterval: 30_000,
   })
 
-  const approveMutation = useMutation({
-    mutationFn: (id) => axios.post(`/api/orders/${id}/approve`),
-    onSuccess: () => {
-      toast.success('✅ Order approved!')
-      queryClient.invalidateQueries(['orders'])
-      queryClient.invalidateQueries(['items'])
-    },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to approve'),
-    onSettled: () => setApprovingId(null),
+  const { data: products = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => axios.get('/api/products').then(r => r.data).catch(() => []),
   })
 
-  const pending  = orders.filter(o => o.status === 'PENDING')
-  const approved = orders.filter(o => o.status !== 'PENDING')
+  const handleApprove = async (orderId) => {
+    try {
+      await axios.post(`/api/orders/${orderId}/approve`)
+      toast.success('Order approved and stock deducted!')
+      qc.invalidateQueries(['orders'])
+      qc.invalidateQueries(['products'])
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Approval failed'
+      toast.error(msg)
+    }
+  }
+
+  const handleCancel = async (orderId) => {
+    try {
+      await axios.post(`/api/orders/${orderId}/cancel`)
+      toast.success('Order cancelled')
+      qc.invalidateQueries(['orders'])
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Cancel failed')
+    }
+  }
+
+  const pendingCount = orders.filter(o => o.status === 'PENDING').length
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1>Orders</h1>
+          <p>{orders.length} total orders · {pendingCount} pending approval</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+          <Plus size={15} /> New Order
+        </button>
+      </div>
+
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid-3" style={{ gap: 14 }}>
         {[
-          { label: 'Total Orders',   value: orders.length,    color: 'bg-blue-50 text-blue-600' },
-          { label: 'Pending',         value: pending.length,   color: 'bg-amber-50 text-amber-600' },
-          { label: 'Approved',        value: approved.length,  color: 'bg-green-50 text-green-600' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="card p-5">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{label}</p>
-            <p className="text-3xl font-bold text-slate-800">{value}</p>
+          { label: 'Pending',   count: orders.filter(o => o.status === 'PENDING').length,   color: 'var(--warning)',  bg: 'var(--warning-bg)',  icon: Clock },
+          { label: 'Approved',  count: orders.filter(o => o.status === 'APPROVED').length,  color: 'var(--success)',  bg: 'var(--success-bg)',  icon: CheckCircle },
+          { label: 'Cancelled', count: orders.filter(o => o.status === 'CANCELLED').length, color: 'var(--gray-400)', bg: 'var(--gray-100)',    icon: XCircle },
+        ].map(({ label, count, color, bg, icon: Icon }) => (
+          <div key={label} className="card card-p" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gray-800)' }}>{count}</div>
+              <div style={{ fontSize: 12, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{label}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-800">All Orders</h2>
-        <button onClick={() => refetch()} className="btn-secondary text-xs px-3 py-2">
-          <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} /> Refresh
-        </button>
+      {/* Orders Table */}
+      <div className="card">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                [...Array(4)].map((_, i) => (
+                  <tr key={i}>{[...Array(6)].map((_, j) => <td key={j}><div className="skeleton skeleton-text" /></td>)}</tr>
+                ))
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <div className="empty-state">
+                      <div className="empty-state__icon"><ShoppingCart size={24} /></div>
+                      <h3>No orders yet</h3>
+                      <p>Create your first customer order</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                orders.map(order => (
+                  <tr key={order.id}>
+                    <td><code style={{ fontSize: 11, background: 'var(--gray-100)', padding: '2px 6px', borderRadius: 4 }}>{order.id}</code></td>
+                    <td><span className="font-semibold text-body">{order.customer_name}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {(order.items || []).map((item, i) => (
+                          <span key={i} style={{ fontSize: 12, color: 'var(--gray-600)' }}>
+                            {item.quantity}× {item.product_name || item.product_id}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td><OrderStatusBadge status={order.status} /></td>
+                    <td><span className="text-xs text-muted">{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</span></td>
+                    <td>
+                      <div className="flex gap-2">
+                        {order.status === 'PENDING' && (
+                          <>
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={() => handleApprove(order.id)}
+                            >
+                              <CheckCircle size={13} /> Approve
+                            </button>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => handleCancel(order.id)}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                        {order.status !== 'PENDING' && (
+                          <span className="text-xs text-muted">{order.approved_at ? `Processed ${new Date(order.approved_at).toLocaleDateString()}` : '—'}</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => <div key={i} className="h-40 bg-white rounded-2xl border border-slate-100 animate-pulse" />)}
-        </div>
-      ) : orders.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...pending, ...approved].map(order => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              loading={approvingId === order.id && approveMutation.isPending}
-              onApprove={(id) => { setApprovingId(id); approveMutation.mutate(id) }}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-20 card">
-          <ClipboardList size={32} className="text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm">No orders yet. Orders placed from the mobile app appear here.</p>
-        </div>
+      {showCreate && (
+        <CreateOrderModal
+          products={products}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { qc.invalidateQueries(['orders']); setShowCreate(false) }}
+        />
       )}
+    </div>
+  )
+}
+
+function CreateOrderModal({ products, onClose, onCreated }) {
+  const [customerName, setCustomerName] = useState('')
+  const [notes, setNotes] = useState('')
+  const [items, setItems] = useState([{ product_id: '', product_name: '', quantity: 1 }])
+  const [loading, setLoading] = useState(false)
+
+  const addItem = () => setItems(prev => [...prev, { product_id: '', product_name: '', quantity: 1 }])
+  const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i))
+  const updateItem = (i, k, v) => setItems(prev => prev.map((item, idx) => idx === i ? { ...item, [k]: v } : item))
+
+  const handleProductChange = (i, productId) => {
+    const product = products.find(p => p.id === productId)
+    updateItem(i, 'product_id', productId)
+    updateItem(i, 'product_name', product?.name || '')
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!customerName.trim()) return toast.error('Customer name required')
+    if (items.some(item => !item.product_id)) return toast.error('Select a product for each item')
+    setLoading(true)
+    try {
+      await axios.post('/api/orders', { customer_name: customerName, items, notes })
+      toast.success('Order created!')
+      onCreated()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create order')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+        <div className="modal__header">
+          <span className="modal__title">Create New Order</span>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal__body">
+            <div className="form-group">
+              <label className="form-label">Customer Name *</label>
+              <input className="input" placeholder="Customer / Company name" value={customerName} onChange={e => setCustomerName(e.target.value)} required />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="form-label">Order Items *</label>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={addItem}><Plus size={13} /> Add Item</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {items.map((item, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <select
+                      className="input"
+                      value={item.product_id}
+                      onChange={e => handleProductChange(i, e.target.value)}
+                      required
+                    >
+                      <option value="">Select product...</option>
+                      {products.filter(p => p.status !== 'OUT_OF_STOCK').map(p => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.quantity} {p.unit} available)</option>
+                      ))}
+                    </select>
+                    <input
+                      className="input"
+                      type="number" min="1"
+                      placeholder="Qty"
+                      style={{ width: 80 }}
+                      value={item.quantity}
+                      onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 1)}
+                    />
+                    {items.length > 1 && (
+                      <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => removeItem(i)}>
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Notes</label>
+              <textarea className="input" placeholder="Delivery address, special instructions..." value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
+            </div>
+          </div>
+          <div className="modal__footer">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Creating...' : 'Create Order'}</button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

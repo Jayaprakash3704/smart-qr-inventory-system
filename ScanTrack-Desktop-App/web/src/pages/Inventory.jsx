@@ -1,149 +1,277 @@
-import { useState, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { Link } from 'react-router-dom'
+import { Package, Search, Plus, Filter, RefreshCw, QrCode } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { Package, Search, Filter, Plus, QrCode, X, RefreshCw } from 'lucide-react'
-import AddItemModal from '../components/forms/AddItemModal'
 
-const STATE_TABS = ['All', 'In Stock', 'Reserved', 'Picked', 'Dispatched', 'Low']
+const CATEGORIES = ['All', 'Electronics', 'Food & Beverage', 'Clothing', 'Office Supplies', 'Tools', 'Medical', 'General']
 
-function StatusBadge({ state }) {
-  const s = (state || 'IN STOCK').toUpperCase()
+function StatusBadge({ status }) {
   const map = {
-    'IN STOCK':   'badge-instock',
-    'RESERVED':   'badge-reserved',
-    'PICKED':     'badge bg-indigo-100 text-indigo-700',
-    'DISPATCHED': 'badge-dispatched',
-    'LOW':        'badge-low',
+    IN_STOCK: ['badge-in-stock', 'In Stock'],
+    LOW_STOCK: ['badge-low-stock', 'Low Stock'],
+    OUT_OF_STOCK: ['badge-out-stock', 'Out of Stock'],
   }
-  return <span className={`badge ${map[s] || 'badge-instock'}`}>{s}</span>
-}
-
-function ItemCard({ item }) {
-  return (
-    <Link to={`/inventory/${item.id}`}
-      className="card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer animate-fade-in-up block">
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
-          <Package size={18} className="text-orange-500" />
-        </div>
-        <StatusBadge state={item.state} />
-      </div>
-      <h3 className="font-bold text-slate-800 text-sm mb-1 truncate">{item.item_type || item.name || item.id}</h3>
-      <p className="text-xs text-slate-400 mb-3">{item.id}</p>
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        {item.weight && <div><span className="text-slate-400">Weight:</span> <span className="font-semibold text-slate-700">{item.weight} kg</span></div>}
-        {item.supplier_name && <div><span className="text-slate-400">Supplier:</span> <span className="font-semibold text-slate-700 truncate block">{item.supplier_name}</span></div>}
-        {item.rack_id && <div><span className="text-slate-400">Rack:</span> <span className="font-semibold text-slate-700">R{item.rack_id}</span></div>}
-        {item.lot_number && <div><span className="text-slate-400">Lot:</span> <span className="font-semibold text-slate-700 truncate block">{item.lot_number}</span></div>}
-      </div>
-      {item.id && (
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
-          <img src={`/qrcodes/${item.id}.png`} alt="QR" className="w-8 h-8 rounded object-cover border border-slate-100"
-            onError={e => { e.target.style.display = 'none' }} />
-          <div className="flex items-center gap-1 text-[10px] text-slate-400">
-            <QrCode size={10} /> QR Ready
-          </div>
-        </div>
-      )}
-    </Link>
-  )
+  const [cls, label] = map[status] || ['badge-info', status]
+  return <span className={`badge ${cls}`}>{label}</span>
 }
 
 export default function Inventory() {
   const [search, setSearch] = useState('')
-  const [activeTab, setActiveTab] = useState('All')
+  const [category, setCategory] = useState('All')
   const [showAdd, setShowAdd] = useState(false)
-  const queryClient = useQueryClient()
+  const qc = useQueryClient()
 
-  const { data: items = [], isLoading, refetch } = useQuery({
-    queryKey: ['items'],
-    queryFn: () => axios.get('/api/rolls').then(r => r.data).catch(() => []),
+  const { data: products = [], isLoading, refetch } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => axios.get('/api/products').then(r => r.data).catch(() => []),
+    refetchInterval: 60_000,
   })
 
-  const filtered = useMemo(() => {
-    let list = items.filter(i => i.id && !i.id.toLowerCase().includes('test'))
-    if (search) {
-      const q = search.toLowerCase()
-      list = list.filter(i =>
-        (i.id || '').toLowerCase().includes(q) ||
-        (i.item_type || i.name || '').toLowerCase().includes(q) ||
-        (i.supplier_name || '').toLowerCase().includes(q) ||
-        (i.lot_number || '').toLowerCase().includes(q)
-      )
-    }
-    if (activeTab !== 'All') {
-      list = list.filter(i => (i.state || 'IN STOCK').toUpperCase() === activeTab.toUpperCase())
-    }
-    return list
-  }, [items, search, activeTab])
-
-  const stateCount = (s) => s === 'All'
-    ? items.filter(i => i.id && !i.id.toLowerCase().includes('test')).length
-    : items.filter(i => i.id && !i.id.toLowerCase().includes('test') && (i.state || 'IN STOCK').toUpperCase() === s.toUpperCase()).length
+  // Client-side filter
+  const filtered = products.filter(p => {
+    const matchSearch = !search ||
+      (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.sku  || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.supplier || '').toLowerCase().includes(search.toLowerCase())
+    const matchCat = category === 'All' || p.category === category
+    return matchSearch && matchCat
+  })
 
   return (
-    <div className="space-y-5">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[220px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input className="input pl-9 h-10" placeholder="Search ID, type, supplier, lot…"
-            value={search} onChange={e => setSearch(e.target.value)} />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><X size={14} /></button>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Header */}
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1>Inventory</h1>
+          <p>{products.length} products registered · {products.filter(p => p.status === 'LOW_STOCK').length} low stock</p>
         </div>
-
-        <button onClick={() => refetch()}
-          className="h-10 w-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all">
-          <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
-        </button>
-
-        <button onClick={() => setShowAdd(true)} className="btn-primary h-10">
-          <Plus size={16} /> Add Item
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1.5 flex-wrap">
-        {STATE_TABS.map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${activeTab === tab
-              ? 'bg-orange-500 text-white shadow-sm shadow-orange-200'
-              : 'bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-500'}`}>
-            {tab} <span className="opacity-70 ml-0.5">({stateCount(tab)})</span>
+        <div className="flex gap-2">
+          <button className="btn btn-secondary btn-sm" onClick={() => refetch()}>
+            <RefreshCw size={14} /> Refresh
           </button>
-        ))}
+          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+            <Plus size={15} /> Add Product
+          </button>
+        </div>
       </div>
 
-      {/* Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => <div key={i} className="h-44 bg-white rounded-2xl border border-slate-100 animate-pulse" />)}
-        </div>
-      ) : filtered.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(item => <ItemCard key={item.id} item={item} />)}
-        </div>
-      ) : (
-        <div className="text-center py-20 card">
-          <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4">
-            <Package size={28} className="text-slate-300" />
+      {/* Filters */}
+      <div className="card card-p" style={{ padding: '14px 18px' }}>
+        <div className="flex gap-3 flex-wrap">
+          <div className="search-bar" style={{ flex: 1, minWidth: 200 }}>
+            <Search size={15} className="search-bar__icon" />
+            <input
+              className="input"
+              placeholder="Search by name, SKU, supplier..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
-          <h3 className="text-lg font-semibold text-slate-700">No items found</h3>
-          <p className="text-slate-400 text-sm mt-1">
-            {search ? 'Try a different search.' : 'Add your first inventory item to get started.'}
-          </p>
-          {!search && (
-            <button onClick={() => setShowAdd(true)} className="btn-primary mt-4 mx-auto">
-              <Plus size={15} /> Add Item
-            </button>
-          )}
+          <select
+            className="input"
+            style={{ width: 200 }}
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+          >
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
-      )}
+      </div>
 
-      {showAdd && <AddItemModal onClose={() => setShowAdd(false)} onSuccess={() => { queryClient.invalidateQueries(['items']); setShowAdd(false) }} />}
+      {/* Table */}
+      <div className="card">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>QR</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    {[...Array(8)].map((_, j) => (
+                      <td key={j}><div className="skeleton skeleton-text" style={{ width: '80%' }} /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9}>
+                    <div className="empty-state">
+                      <div className="empty-state__icon"><Package size={24} /></div>
+                      <h3>No products found</h3>
+                      <p>{search ? 'Try a different search term' : 'Add your first product to get started'}</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map(item => (
+                  <tr key={item.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div className="icon-box icon-box-sm icon-box-brand"><Package size={13} /></div>
+                        <div>
+                          <div className="font-semibold text-body" style={{ fontSize: 13 }}>{item.name}</div>
+                          <div className="text-xs text-muted">{item.supplier || '—'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><code style={{ fontSize: 11, background: 'var(--gray-100)', padding: '2px 6px', borderRadius: 4, color: 'var(--gray-700)' }}>{item.sku}</code></td>
+                    <td><span className="text-sm text-body">{item.category}</span></td>
+                    <td>
+                      <span style={{
+                        fontWeight: 700, fontSize: 14,
+                        color: item.quantity === 0 ? 'var(--danger-text)'
+                          : item.status === 'LOW_STOCK' ? 'var(--warning-text)'
+                          : 'var(--success-text)'
+                      }}>
+                        {item.quantity}
+                      </span>
+                    </td>
+                    <td><span className="text-sm text-muted">{item.unit}</span></td>
+                    <td><span className="text-sm text-body">{item.location}</span></td>
+                    <td><StatusBadge status={item.status} /></td>
+                    <td>
+                      <a
+                        href={`/api/qr/${item.id}`} target="_blank" rel="noreferrer"
+                        className="btn btn-ghost btn-sm btn-icon" title="View QR Code"
+                      >
+                        <QrCode size={14} />
+                      </a>
+                    </td>
+                    <td>
+                      <Link to={`/inventory/${item.id}`} className="btn btn-secondary btn-sm">
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add Product Modal */}
+      {showAdd && <AddProductModal onClose={() => setShowAdd(false)} onAdded={() => { qc.invalidateQueries(['products']); setShowAdd(false) }} />}
+    </div>
+  )
+}
+
+function AddProductModal({ onClose, onAdded }) {
+  const [form, setForm] = useState({
+    name: '', sku: '', category: 'General', quantity: '',
+    unit: 'pcs', location: 'Warehouse', supplier: '',
+    low_stock_threshold: '5', description: '', cost_price: '', sell_price: '',
+  })
+  const [loading, setLoading] = useState(false)
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.name) return toast.error('Product name is required')
+    setLoading(true)
+    try {
+      await axios.post('/api/products', { ...form, quantity: parseInt(form.quantity) || 0 })
+      toast.success('Product added successfully!')
+      onAdded()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to add product')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal__header">
+          <span className="modal__title">Add New Product</span>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal__body">
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Product Name *</label>
+                <input className="input" placeholder="e.g. USB-C Cable 2m" value={form.name} onChange={e => set('name', e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">SKU (auto if blank)</label>
+                <input className="input" placeholder="e.g. USB-C-2M-001" value={form.sku} onChange={e => set('sku', e.target.value)} />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Category</label>
+                <select className="input" value={form.category} onChange={e => set('category', e.target.value)}>
+                  {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Initial Quantity</label>
+                <input className="input" type="number" min="0" placeholder="0" value={form.quantity} onChange={e => set('quantity', e.target.value)} />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Unit</label>
+                <select className="input" value={form.unit} onChange={e => set('unit', e.target.value)}>
+                  {['pcs', 'kg', 'g', 'L', 'mL', 'box', 'pack', 'roll', 'set', 'pair'].map(u => <option key={u}>{u}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Low Stock Threshold</label>
+                <input className="input" type="number" min="0" placeholder="5" value={form.low_stock_threshold} onChange={e => set('low_stock_threshold', e.target.value)} />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Location / Aisle</label>
+                <input className="input" placeholder="Warehouse A / Shelf 2" value={form.location} onChange={e => set('location', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Supplier</label>
+                <input className="input" placeholder="Supplier name" value={form.supplier} onChange={e => set('supplier', e.target.value)} />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Cost Price (₹)</label>
+                <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Sell Price (₹)</label>
+                <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={form.sell_price} onChange={e => set('sell_price', e.target.value)} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Description</label>
+              <textarea className="input" placeholder="Optional product description..." value={form.description} onChange={e => set('description', e.target.value)} rows={2} />
+            </div>
+          </div>
+          <div className="modal__footer">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Adding...' : '+ Add Product'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

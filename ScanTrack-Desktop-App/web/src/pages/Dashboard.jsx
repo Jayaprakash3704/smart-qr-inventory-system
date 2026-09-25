@@ -1,191 +1,276 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
 import {
   Package, TrendingUp, TrendingDown, AlertTriangle,
-  ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShoppingCart
+  ArrowDownToLine, ArrowUpFromLine, ShoppingCart,
+  ClipboardList, BarChart3, RefreshCw,
 } from 'lucide-react'
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area, Legend,
 } from 'recharts'
 
-const COLORS = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#eab308']
+const PIE_COLORS = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#eab308', '#06b6d4']
 
-function StatCard({ title, value, sub, icon: Icon, color, to, delay = 0 }) {
+function StatCard({ title, value, sub, icon: Icon, iconClass, to, delay = 0 }) {
   const inner = (
-    <div className="card p-5 cursor-pointer animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
-      <div className="flex justify-between items-start mb-3">
-        <p className="text-sm font-medium text-slate-500">{title}</p>
-        <div className={`p-2 rounded-xl ${color}`}><Icon size={18} /></div>
+    <div className="stat-card anim-fade-up card-hover" style={{ animationDelay: `${delay}ms` }}>
+      <div className="flex items-center justify-between">
+        <div className={`icon-box icon-box-md ${iconClass}`}>
+          <Icon size={20} />
+        </div>
       </div>
-      <p className="text-3xl font-bold text-slate-800">{value ?? '—'}</p>
-      <p className="text-xs text-slate-400 mt-1.5">{sub}</p>
+      <div className="stat-card__value">{value ?? '—'}</div>
+      <div className="stat-card__label">{title}</div>
+      {sub && <div className="stat-card__sub">{sub}</div>}
     </div>
   )
-  return to ? <Link to={to}>{inner}</Link> : inner
+  return to ? <Link to={to} style={{ textDecoration: 'none' }}>{inner}</Link> : inner
 }
 
 export default function Dashboard() {
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['items'],
-    queryFn: () => axios.get('/api/rolls').then(r => r.data).catch(() => []),
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    const eventSource = new EventSource('/api/stream')
+    eventSource.addEventListener('stockUpdate', (e) => {
+      queryClient.invalidateQueries({ queryKey: ['reports-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions-recent'] })
+      queryClient.invalidateQueries({ queryKey: ['products-dashboard'] })
+    })
+    return () => eventSource.close()
+  }, [queryClient])
+
+  const { data: summary, isLoading: summaryLoading, refetch } = useQuery({
+    queryKey: ['reports-summary'],
+    queryFn: () => axios.get('/api/reports/summary').then(r => r.data).catch(() => null),
     refetchInterval: 60_000,
   })
 
-  const { data: txns = [] } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: () => axios.get('/api/transactions').then(r => r.data).catch(() => []),
+  const { data: recentTxns = [] } = useQuery({
+    queryKey: ['transactions-recent'],
+    queryFn: () => axios.get('/api/transactions?limit=6').then(r => r.data).catch(() => []),
+    refetchInterval: 60_000,
   })
 
-  const { data: orders = [] } = useQuery({
-    queryKey: ['orders'],
-    queryFn: () => axios.get('/api/orders').then(r => r.data).catch(() => []),
+  const { data: products = [] } = useQuery({
+    queryKey: ['products-dashboard'],
+    queryFn: () => axios.get('/api/products').then(r => r.data).catch(() => []),
+    refetchInterval: 60_000,
   })
 
-  // Stats
-  const total     = items.length
-  const inStock   = items.filter(i => (i.state || '').toUpperCase() === 'IN STOCK').length
-  const reserved  = items.filter(i => (i.state || '').toUpperCase() === 'RESERVED').length
-  const dispatched = items.filter(i => (i.state || '').toUpperCase() === 'DISPATCHED').length
-  const lowStock  = items.filter(i => (i.state || '').toUpperCase() === 'LOW').length
-  const pending   = orders.filter(o => o.status === 'PENDING').length
-
-  // Chart: category breakdown
-  const typeMap = {}
-  items.forEach(i => {
-    const t = i.item_type || i.item_type || 'Unknown'
-    typeMap[t] = (typeMap[t] || 0) + 1
-  })
-  const pieData = Object.entries(typeMap).map(([name, value]) => ({ name, value }))
-
-  // Chart: bar by state
-  const barData = [
-    { name: 'In Stock',   count: inStock },
-    { name: 'Reserved',   count: reserved },
-    { name: 'Dispatched', count: dispatched },
-    { name: 'Low Stock',  count: lowStock },
-  ]
-
-  // Recent activity (last 5 txns)
-  const recent = [...txns].slice(0, 5)
+  const s = summary || {}
 
   return (
-    <div className="space-y-6">
-      {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard title="Total Items"  value={total}     sub="All registered" icon={Package}         color="bg-blue-50 text-blue-600"   to="/inventory"  delay={0} />
-        <StatCard title="In Stock"     value={inStock}   sub="Available"      icon={TrendingUp}      color="bg-green-50 text-green-600" to="/inventory"  delay={60} />
-        <StatCard title="Reserved"     value={reserved}  sub="Pending orders" icon={ShoppingCart}    color="bg-orange-50 text-orange-500" to="/orders"   delay={120} />
-        <StatCard title="Dispatched"   value={dispatched} sub="Delivered"     icon={TrendingDown}    color="bg-slate-50 text-slate-500" to="/inventory"  delay={180} />
-        <StatCard title="Low Stock"    value={lowStock}  sub="Need reorder"   icon={AlertTriangle}   color="bg-amber-50 text-amber-600" to="/notifications" delay={240} />
-        <StatCard title="Pending Orders" value={pending} sub="Awaiting approval" icon={ClipboardList} color="bg-purple-50 text-purple-600" to="/orders"  delay={300} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 16 }}>
+        <StatCard title="Total Products"  value={s.totalProducts} sub="All SKUs"        icon={Package}        iconClass="icon-box-brand"  to="/inventory"     delay={0} />
+        <StatCard title="In Stock"        value={s.inStock}       sub="Available"       icon={TrendingUp}     iconClass="icon-box-green"  to="/inventory"     delay={60} />
+        <StatCard title="Low Stock"       value={s.lowStock}      sub="Needs attention" icon={AlertTriangle}  iconClass="icon-box-yellow" to="/notifications" delay={120} />
+        <StatCard title="Out of Stock"    value={s.outOfStock}    sub="Unavailable"     icon={TrendingDown}   iconClass="icon-box-red"    to="/inventory"     delay={180} />
+        <StatCard title="Total Qty"       value={s.totalQuantity} sub="Units on hand"   icon={BarChart3}      iconClass="icon-box-blue"   delay={240} />
+        <StatCard title="Pending Orders"  value={s.pendingOrders} sub="Awaiting approval" icon={ClipboardList} iconClass="icon-box-purple" to="/orders"       delay={300} />
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bar chart */}
-        <div className="card p-6">
-          <h3 className="font-bold text-slate-700 mb-5">Stock by Status</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={barData} barSize={36}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} />
-              <Tooltip
-                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }}
-                cursor={{ fill: '#f8fafc' }}
-              />
-              <Bar dataKey="count" fill="#f97316" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Charts Row */}
+      <div className="grid-2" style={{ gap: 20 }}>
+        {/* Status Bar Chart */}
+        <div className="card card-p anim-fade-up" style={{ animationDelay: '100ms' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-heading">Stock by Status</h3>
+          </div>
+          {summaryLoading ? (
+            <div className="skeleton" style={{ height: 220 }} />
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={s.statusBreakdown || []} barSize={40}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8', fontFamily: 'Outfit' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8', fontFamily: 'Outfit' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'Outfit', fontSize: 13 }}
+                  cursor={{ fill: '#f8fafc' }}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {(s.statusBreakdown || []).map((_, i) => (
+                    <Cell key={i} fill={['#22c55e', '#eab308', '#ef4444'][i % 3]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
-        {/* Pie chart */}
-        <div className="card p-6">
-          <h3 className="font-bold text-slate-700 mb-5">Items by Category</h3>
-          {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
+        {/* Category Pie */}
+        <div className="card card-p anim-fade-up" style={{ animationDelay: '160ms' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-heading">Items by Category</h3>
+          </div>
+          {summaryLoading ? (
+            <div className="skeleton" style={{ height: 220 }} />
+          ) : (s.categoryBreakdown || []).length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                  {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <Pie
+                  data={s.categoryBreakdown}
+                  cx="50%" cy="50%"
+                  outerRadius={80} innerRadius={40}
+                  dataKey="count"
+                  paddingAngle={3}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {(s.categoryBreakdown || []).map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'Outfit', fontSize: 13 }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-60 flex items-center justify-center text-slate-400 text-sm">No data yet</div>
+            <div className="empty-state" style={{ height: 220 }}>
+              <p>No category data yet</p>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Quick Actions + Recent */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick actions */}
-        <div className="card p-6">
-          <h3 className="font-bold text-slate-700 mb-4">Quick Actions</h3>
-          <div className="space-y-2.5">
+      {/* Daily Transactions */}
+      {(s.dailyTransactions || []).length > 0 && (
+        <div className="card card-p anim-fade-up" style={{ animationDelay: '200ms' }}>
+          <h3 className="font-semibold text-heading mb-4">7-Day Transaction Volume</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={s.dailyTransactions}>
+              <defs>
+                <linearGradient id="gradIn" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradOut" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'Outfit', fontSize: 13 }} />
+              <Legend wrapperStyle={{ fontSize: 12, fontFamily: 'Outfit' }} />
+              <Area type="monotone" dataKey="stockIn"  name="Stock In"  stroke="#22c55e" fill="url(#gradIn)"  strokeWidth={2} />
+              <Area type="monotone" dataKey="stockOut" name="Stock Out" stroke="#ef4444" fill="url(#gradOut)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Bottom Row: Quick Actions + Recent Items + Recent Transactions */}
+      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 1fr', gap: 20 }}>
+
+        {/* Quick Actions */}
+        <div className="card card-p anim-fade-up" style={{ animationDelay: '240ms' }}>
+          <h3 className="font-semibold text-heading mb-3">Quick Actions</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[
-              { label: 'Stock In',       to: '/stock-in',      icon: ArrowDownToLine, color: 'text-green-600 bg-green-50' },
-              { label: 'Stock Out',      to: '/stock-out',     icon: ArrowUpFromLine, color: 'text-red-500 bg-red-50' },
-              { label: 'Generate QR',   to: '/qr-generator',  icon: Package,         color: 'text-orange-500 bg-orange-50' },
-              { label: 'View Orders',   to: '/orders',         icon: ShoppingCart,    color: 'text-blue-600 bg-blue-50' },
-            ].map(({ label, to, icon: Icon, color }) => (
-              <Link key={to} to={to}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors border border-slate-100">
-                <div className={`p-1.5 rounded-lg ${color}`}><Icon size={15} /></div>
-                <span className="text-sm font-medium text-slate-700">{label}</span>
-                <span className="ml-auto text-slate-300 text-lg">›</span>
+              { label: 'Stock In',      to: '/stock-in',      icon: ArrowDownToLine, cls: 'icon-box-green' },
+              { label: 'Stock Out',     to: '/stock-out',     icon: ArrowUpFromLine, cls: 'icon-box-red' },
+              { label: 'Generate QR',  to: '/qr-generator',  icon: Package,          cls: 'icon-box-brand' },
+              { label: 'View Orders',  to: '/orders',         icon: ShoppingCart,    cls: 'icon-box-purple' },
+            ].map(({ label, to, icon: Icon, cls }) => (
+              <Link
+                key={to} to={to}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 10px', borderRadius: 'var(--r-md)',
+                  transition: 'background var(--t-fast)', textDecoration: 'none',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--gray-50)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div className={`icon-box icon-box-sm ${cls}`}><Icon size={13} /></div>
+                <span className="text-sm font-medium text-body">{label}</span>
+                <span style={{ marginLeft: 'auto', color: 'var(--gray-300)', fontSize: 16 }}>›</span>
               </Link>
             ))}
           </div>
         </div>
 
-        {/* Recent items */}
-        <div className="card p-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-700">Recent Inventory</h3>
-            <Link to="/inventory" className="text-xs text-orange-500 font-semibold hover:underline">View all →</Link>
+        {/* Recent Products */}
+        <div className="card card-p anim-fade-up" style={{ animationDelay: '280ms' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-heading">Recent Products</h3>
+            <Link to="/inventory" style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 600 }}>View all →</Link>
           </div>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : items.slice(0, 5).length > 0 ? (
-            <div className="space-y-2">
-              {items.slice(0, 5).map(item => {
-                const state = (item.state || 'IN STOCK').toUpperCase()
-                const badgeClass = state === 'IN STOCK' ? 'badge-instock' : state === 'RESERVED' ? 'badge-reserved' : state === 'DISPATCHED' ? 'badge-dispatched' : 'badge-low'
+          {products.slice(0, 5).length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {products.slice(0, 5).map(item => {
+                const statusMap = {
+                  IN_STOCK: 'badge-in-stock', LOW_STOCK: 'badge-low-stock',
+                  OUT_OF_STOCK: 'badge-out-stock',
+                }
+                const badgeCls = statusMap[item.status] || 'badge-info'
+                const statusLabel = item.status?.replace('_', ' ') || 'IN STOCK'
                 return (
-                  <Link key={item.id} to={`/inventory/${item.id}`}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors border border-slate-100">
-                    <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
-                      <Package size={14} className="text-orange-500" />
-                    </div>
+                  <Link key={item.id} to={`/inventory/${item.id}`} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 10px', borderRadius: 'var(--r-md)',
+                    transition: 'background var(--t-fast)', textDecoration: 'none', border: '1px solid transparent'
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--gray-50)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div className="icon-box icon-box-sm icon-box-brand"><Package size={13} /></div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-700 truncate">{item.item_type || item.name || item.id}</p>
-                      <p className="text-xs text-slate-400">{item.id}</p>
+                      <div className="text-sm font-semibold text-body truncate">{item.name}</div>
+                      <div className="text-xs text-muted">{item.sku} · {item.category}</div>
                     </div>
-                    <span className={`badge ${badgeClass}`}>{state}</span>
+                    <span className={`badge ${badgeCls}`}>{statusLabel}</span>
                   </Link>
                 )
               })}
             </div>
           ) : (
-            <div className="text-center py-8 text-slate-400 text-sm">No items yet. <Link to="/stock-in" className="text-orange-500 hover:underline">Add your first item →</Link></div>
+            <div className="empty-state" style={{ padding: '24px' }}>
+              <p>No products yet. <Link to="/stock-in" style={{ color: 'var(--brand)' }}>Add first →</Link></p>
+            </div>
           )}
         </div>
+
+        {/* Recent Transactions */}
+        <div className="card card-p anim-fade-up" style={{ animationDelay: '320ms' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-heading">Recent Transactions</h3>
+          </div>
+          {recentTxns.slice(0, 5).length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {recentTxns.slice(0, 5).map(txn => (
+                <div key={txn.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 10px', borderRadius: 'var(--r-md)',
+                }}>
+                  <div className={`icon-box icon-box-sm ${txn.type === 'STOCK_IN' ? 'icon-box-green' : 'icon-box-red'}`}>
+                    {txn.type === 'STOCK_IN' ? <ArrowDownToLine size={13} /> : <ArrowUpFromLine size={13} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-body truncate">{txn.product_name}</div>
+                    <div className="text-xs text-muted">{txn.type === 'STOCK_IN' ? '+' : '-'}{txn.quantity} units</div>
+                  </div>
+                  <span className="text-xs text-muted">{new Date(txn.timestamp).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state" style={{ padding: '24px' }}>
+              <p>No transactions yet</p>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
-  )
-}
-
-function ClipboardList(props) {
-  return (
-    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-    </svg>
   )
 }

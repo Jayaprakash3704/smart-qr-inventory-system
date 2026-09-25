@@ -1,8 +1,10 @@
-# 📦 ScanTrack Inventory System
+# 📦 ScanTrack Inventory System v2.0
 
 > **ScanTrack** | End-to-end QR-based Inventory Management
 
-A complete, production-grade inventory system built for modern warehouses — combining a **Flutter mobile app** for warehouse floor staff and a **Python/Node.js/React desktop ERP app** for managers and admins. Both apps share a single **Firebase Firestore** database for real-time sync.
+A complete, production-grade inventory system built for modern warehouses. ScanTrack V2 is a completely rebuilt REST-based system comprising a **Flutter mobile app** for warehouse floor staff (QR scanning, stock in/out) and a **React/Node.js web application** for managers and admins. 
+
+Unlike V1 (which relied on Firebase and Desktop UI clients), V2 runs on a centralized **Node.js Express** backend with a unified REST API, perfect for scalable cloud deployments like AWS EC2.
 
 ---
 
@@ -10,20 +12,18 @@ A complete, production-grade inventory system built for modern warehouses — co
 
 | Project | Platform | Tech | Role |
 |---------|----------|------|------|
-| [`Yarn-Manager-Mobile-App/`](./Yarn-Manager-Mobile-App/) | Android | Flutter / Dart | Warehouse floor — QR scanning, picking, dispatching |
-| [`Yarn-Tracker-Desktop-App/`](./Yarn-Tracker-Desktop-App%20-%20Copy/) | Windows | Python + Node.js + React | Admin desk — inventory management, orders, analytics |
+| [`ScanTrack-Mobile-App/`](./ScanTrack-Mobile-App/) | Android / iOS | Flutter / Dart | Warehouse floor — QR scanning, real-time stock in/out |
+| [`ScanTrack-Desktop-App/`](./ScanTrack-Desktop-App/) | Web / Cloud | Node.js + React | Admin portal & API Server — inventory management, analytics, QR generation |
 
 ---
 
 ## 🎯 System Purpose
 
-This system solves the problem of **tracking physical items** in a warehouse:
+This system solves the problem of **tracking physical items** in a warehouse or store:
 
-1. **Admin (Desktop)** registers items → auto-generates QR codes
-2. **Staff (Mobile)** scans QR labels on physical items → picks and dispatches
-3. **Firebase** keeps both apps in sync in real-time
-
-Every item goes through a tracked lifecycle: `IN STOCK → RESERVED → PICKED → DISPATCHED`
+1. **Admin (Web Dashboard)** registers items → auto-generates QR codes for printing.
+2. **Staff (Mobile App)** scans physical QR labels → instantly processes Stock-In / Stock-Out.
+3. **Node.js Cloud Server** keeps everything perfectly synced via REST API.
 
 ---
 
@@ -31,24 +31,27 @@ Every item goes through a tracked lifecycle: `IN STOCK → RESERVED → PICKED �
 
 ```
 ┌──────────────────────┐        ┌────────────────────────────┐
-│  Mobile App (Flutter)│        │ Desktop App (Python/React) │
+│  Mobile App (Flutter)│        │  Web App (React Dashboard) │
 │  ─────────────────── │        │  ──────────────────────────│
 │  • QR Code Scanner   │        │  • Inventory Dashboard     │
-│  • Pick List         │        │  • Admin Order Approval    │
-│  • Dispatch List     │        │  • QR Code Generation      │
-│  • Add Item to Stock │        │  • Analytics & Reports     │
+│  • Stock In Form     │        │  • Analytics & Charts      │
+│  • Stock Out Form    │        │  • QR Code Generation      │
+│  • Live Notifications│        │  • System Settings         │
 └──────────┬───────────┘        └────────────┬───────────────┘
            │                                 │
-           │    Firebase Firestore (Cloud)   │
+           │       HTTP / REST API           │
            └────────────┬────────────────────┘
                         │
           ┌─────────────▼──────────────┐
-          │     Shared Collections     │
-          │  • inventory               │
-          │  • transactions            │
-          │  • orders                  │
-          │  • notifications           │
+          │ Node.js Server (Express)   │
+          │ ────────────────────────── │
+          │ • API Routes               │
+          │ • Business Logic           │
+          │ • JSON/SQLite Storage      │
+          │ • Serves Web Frontend      │
           └────────────────────────────┘
+                        │
+                  Deployed on AWS EC2
 ```
 
 ---
@@ -59,93 +62,73 @@ Every item goes through a tracked lifecycle: `IN STOCK → RESERVED → PICKED �
 [New Item Arrives]
        │
        ▼
-[Desktop: Register Item]          [Mobile: Scan & Add]
-  Fill form → Submit         OR     Scan QR label → Add
-  Auto-generates Item ID            Assigns Rack/Bin
-  QR PNG saved to disk
+[Web Dashboard: Register Item]
+  Admin fills form → Submit
+  Auto-generates Item ID
+  Downloads QR PNG for printing
        │
        ▼
-[State: IN STOCK — visible in both apps]
+[State: IN STOCK — visible globally]
        │
        ▼
-[Customer places order]
+[Physical Action: Affix QR]
+  Admin sticks printed QR code to physical shelf/box
        │
        ▼
-[Desktop Admin: Approve Order]
-  Reviews pending orders
-  Clicks Approve → system auto-assigns matching items
+[Mobile App: Warehouse Staff action]
+  Worker taps "Scan QR"
+  Camera scans physical shelf label
        │
        ▼
-[State: RESERVED — appears in Mobile Pick List]
+[Mobile App: Stock Out]
+  Worker enters quantity (-10 units)
+  App posts to REST API
        │
        ▼
-[Mobile: Floor staff opens Pick List]
-  Navigates to shelf location
-  Scans QR on physical item → verified ✓
-  Taps Confirm Pick
-       │
-       ▼
-[State: PICKED — appears in Mobile Dispatch List]
-       │
-       ▼
-[Mobile: Staff confirms dispatch]
-  Scans QR → verifies item identity
-  Taps Confirm Dispatch
-       │
-       ▼
-[State: DISPATCHED — permanent delivery record in Firebase]
-  Visible in Desktop Dispatched history
+[State: UPDATED — Stock decreases by 10]
+  Web Dashboard live charts update instantly.
+  If stock drops below threshold, a Low Stock Notification is triggered.
 ```
 
 ---
 
 ## 🛠 Tech Stack Overview
 
-| Layer | Mobile App | Desktop App |
-|-------|-----------|-------------|
-| **Language** | Dart | Python + JavaScript/JSX |
-| **Framework** | Flutter | PyQt6 + Node.js/Express + React |
-| **UI** | Material 3 | React/TailwindCSS |
-| **Database** | Firebase Firestore | Firebase Firestore |
-| **QR Scanning** | mobile_scanner | — |
-| **QR Generation** | — | qrcode (npm) |
-| **Build Output** | Android APK | Windows .exe |
+| Layer | Mobile App | Web Dashboard | API Server |
+|-------|-----------|-------------|------------|
+| **Language** | Dart | JavaScript/JSX | JavaScript |
+| **Framework** | Flutter | React / Vite | Node.js / Express |
+| **Styling** | Material 3 | TailwindCSS | — |
+| **Network** | REST (http package) | REST (Axios) | Express Router |
+| **QR Handling** | mobile_scanner | — | qrcode (npm) |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start / Deployment
 
-### Mobile App
+### 1. The Cloud Server (Backend + Web)
+The system is designed to be hosted on an Ubuntu server (like AWS EC2).
+
 ```bash
-cd Yarn-Manager-Mobile-App
+cd ScanTrack-Desktop-App/web
+npm install
+npm run build      # Builds the React frontend into backend/public
+
+cd ../backend
+npm install
+npm start          # Starts Node.js on port 5000 serving both API & Web
+```
+*(For production, we recommend using PM2 to keep the server running and Nginx to proxy port 80 to port 5000).*
+
+### 2. The Mobile App
+Make sure your server is running and you know its IP address (e.g., `http://13.201.185.236`).
+
+```bash
+cd ScanTrack-Mobile-App
 flutter pub get
-# Add android/app/google-services.json from Firebase Console
 flutter run
 ```
-
----
-
-### Desktop App
-```bash
-cd "Yarn-Tracker-Desktop-App - Copy/backend"
-npm install
-npm run build
-cd ..
-pip install -r requirements.txt
-python app.py
-```
-
----
-
-## 🔥 Firebase Setup (Required for Both Apps)
-
-Both apps connect to the **same Firebase project**.
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Create or open your project
-3. Enable **Cloud Firestore**
-4. For mobile: download `google-services.json` → place in `android/app/`
-5. For desktop: edit `backend/firebase.js` with your web app config
+**Important:** On first launch, go to the **Settings** page in the mobile app and enter your server's IP address so it knows where to send API requests!
 
 ---
 

@@ -1,51 +1,193 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:qr_reader/pages/welcome_page.dart';
-import 'package:qr_reader/pages/main_page.dart';
-import 'package:qr_reader/pages/reserved_list_page.dart';
-import 'package:qr_reader/pages/dispatch_list_page.dart';
+import 'package:qr_reader/pages/home_page.dart';
+import 'package:qr_reader/pages/inventory_page.dart';
+import 'package:qr_reader/pages/product_detail_page.dart';
+import 'package:qr_reader/pages/qr_scanner_page.dart';
+import 'package:qr_reader/pages/stock_in_page.dart';
+import 'package:qr_reader/pages/stock_out_page.dart';
+import 'package:qr_reader/pages/notifications_page.dart';
+import 'package:qr_reader/pages/settings_page.dart';
+import 'package:qr_reader/pages/login_page.dart';
+import 'package:qr_reader/services/offline_sync_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const MyApp());
+
+  // Initialize Firebase (using default configuration if available via google-services.json)
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint("Firebase init error: $e");
+  }
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("DotEnv init error: $e");
+  }
+
+  await OfflineSyncService().init();
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+  ));
+
+  runApp(const ScanTrackApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ScanTrackApp extends StatelessWidget {
+  const ScanTrackApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ScanTrack Inventory',
+      title: 'ScanTrack',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFF97316), // Orange 500
-          primary: const Color(0xFFF97316),
-          secondary: const Color(0xFF1E293B), // Slate 800
+      theme: _buildTheme(),
+      home: const AuthWrapper(),
+      routes: {
+        '/home':         (_) => const HomePage(),
+        '/inventory':    (_) => const InventoryPage(),
+        '/qr-scanner':   (_) => const QrScannerPage(),
+        '/stock-in':     (_) => const StockInPage(),
+        '/stock-out':    (_) => const StockOutPage(),
+        '/notifications':(_) => const NotificationsPage(),
+        '/settings':     (_) => const SettingsPage(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name != null && settings.name!.startsWith('/product/')) {
+          final id = settings.name!.replaceFirst('/product/', '');
+          return MaterialPageRoute(builder: (_) => ProductDetailPage(productId: id));
+        }
+        return null;
+      },
+    );
+  }
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasData) {
+          return const WelcomePage(); // or HomePage
+        }
+        return const LoginPage();
+      },
+    );
+  }
+}
+
+  ThemeData _buildTheme() {
+    const brand = Color(0xFFF97316); // Orange-500
+    const brandDark = Color(0xFFEA6D00);
+    const bg = Color(0xFFF8FAFC);
+    const surface = Colors.white;
+
+    return ThemeData(
+      useMaterial3: true,
+      fontFamily: 'Roboto',
+      scaffoldBackgroundColor: bg,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: brand,
+        primary: brand,
+        onPrimary: Colors.white,
+        secondary: const Color(0xFF1E293B),
+        surface: surface,
+        background: bg,
+        error: const Color(0xFFEF4444),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: Color(0xFF1E293B),
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          fontSize: 19,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1E293B),
+          letterSpacing: -0.3,
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
+        iconTheme: IconThemeData(color: Color(0xFF64748B)),
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
         ),
       ),
-      routes: {
-        '/': (context) => const WelcomePage(),  // Splash screen
-        '/home': (context) => const MainPage(), // Main page
-        '/reserved': (context) => const ReservedListPage(),
-        '/dispatch': (context) => const DispatchListPage(),
-      },
-      initialRoute: '/',
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFF1F5F9), width: 1),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: brand,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: brand, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFEF4444)),
+        ),
+        hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+        labelStyle: const TextStyle(color: Color(0xFF64748B)),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: brand,
+        unselectedItemColor: Color(0xFF94A3B8),
+        elevation: 0,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+        type: BottomNavigationBarType.fixed,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: const Color(0xFF1E293B),
+        contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
+      ),
     );
   }
 }
