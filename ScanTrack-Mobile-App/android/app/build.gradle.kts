@@ -16,9 +16,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
+
 
     defaultConfig {
         applicationId = "com.yarnroll.yarn_roll_execution_app"
@@ -52,4 +50,8 @@ flutter {
 dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
     implementation("com.google.firebase:firebase-firestore")
+}
+
+kotlin {
+    jvmToolchain(11)
 }
