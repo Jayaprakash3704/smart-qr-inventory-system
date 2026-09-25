@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { Settings as SettingsIcon, Bell, Package, Shield, Info, Users, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
+import { auth } from '../firebase'
+import { signOut } from 'firebase/auth'
+import { useNavigate } from 'react-router-dom'
 
 export default function Settings() {
   const [lowStockThreshold, setLowStockThreshold] = useState(
@@ -17,6 +20,7 @@ export default function Settings() {
   const [newUserRole, setNewUserRole] = useState('staff')
   const [loadingUser, setLoadingUser] = useState(false)
   const [users, setUsers] = useState([])
+  const navigate = useNavigate()
 
   const fetchUsers = () => {
     axios.get('/api/users')
@@ -196,7 +200,17 @@ export default function Settings() {
       </div>
 
       {/* Save Button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
+        <button 
+          className="btn" 
+          onClick={async () => {
+            await signOut(auth)
+            navigate('/login')
+          }}
+          style={{ background: 'var(--gray-100)', color: 'var(--gray-600)', border: 'none' }}
+        >
+          Sign Out
+        </button>
         <button className="btn btn-primary btn-lg" onClick={saveSettings}>
           <Shield size={16} /> Save Settings
         </button>

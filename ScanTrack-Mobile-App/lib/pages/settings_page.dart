@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_reader/services/api_service.dart';
+import 'package:qr_reader/services/auth_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -95,6 +96,28 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               title: const Text('Version', style: TextStyle(fontWeight: FontWeight.w600)),
               subtitle: const Text('2.0.0 (Pure REST Rebuild)'),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFEE2E2),
+                  foregroundColor: const Color(0xFFEF4444),
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  await AuthService.signOut();
+                  if (context.mounted) {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  }
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),
