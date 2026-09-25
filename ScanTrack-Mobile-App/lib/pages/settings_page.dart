@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_reader/services/api_service.dart';
 import 'package:qr_reader/services/auth_service.dart';
+import 'package:qr_reader/main.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -112,7 +113,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 onPressed: () async {
                   await AuthService.signOut();
                   if (context.mounted) {
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AuthWrapper()),
+                      (route) => false,
+                    );
                   }
                 },
                 icon: const Icon(Icons.logout),
