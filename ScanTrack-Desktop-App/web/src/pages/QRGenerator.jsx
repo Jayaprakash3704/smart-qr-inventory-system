@@ -140,18 +140,6 @@ export default function QRGenerator() {
                   </Link>
                 </div>
               </div>
-
-              <div className="card card-p" style={{ fontSize: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>QR Payload</div>
-                <pre style={{
-                  background: 'var(--gray-900)', color: '#a3e635',
-                  padding: 12, borderRadius: 'var(--r-md)',
-                  fontSize: 11, overflow: 'auto', fontFamily: 'monospace',
-                  lineHeight: 1.6,
-                }}>
-                  {JSON.stringify({ id: selected.id, name: selected.name, sku: selected.sku, category: selected.category }, null, 2)}
-                </pre>
-              </div>
             </>
           ) : (
             <div className="card card-p" style={{ textAlign: 'center', padding: 48 }}>

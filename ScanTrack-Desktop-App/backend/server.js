@@ -152,7 +152,7 @@ app.get('/api/health', (req, res) => {
 app.post('/api/users', requireAuth, requireRole('admin'), async (req, res) => {
   const { email, password, role } = req.body;
   if (!email || !password || !role) return res.status(400).json({ error: 'Missing required fields' });
-  if (role !== 'admin' && role !== 'staff') return res.status(400).json({ error: 'Invalid role' });
+  if (role !== 'staff') return res.status(403).json({ error: 'Cannot create new admin users. Only staff can be created.' });
 
   try {
     const userRecord = await auth.createUser({ email, password });
@@ -166,6 +166,16 @@ app.post('/api/users', requireAuth, requireRole('admin'), async (req, res) => {
 
 app.get('/api/users/me', requireAuth, (req, res) => {
   res.json({ uid: req.user.uid, email: req.user.email, role: req.user.role });
+});
+
+app.get('/api/users', requireAuth, requireRole('admin'), (req, res) => {
+  try {
+    const users = db.prepare('SELECT uid, email, role FROM users ORDER BY email ASC').all();
+    res.json(users);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
 });
 
 // ─── PRODUCTS (Staff & Admin) ────────────────────────────────────────────────
