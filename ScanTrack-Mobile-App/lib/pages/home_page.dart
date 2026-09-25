@@ -290,8 +290,14 @@ Widget buildBottomNav(BuildContext context, int current) {
     child: BottomNavigationBar(
       currentIndex: current,
       onTap: (i) {
-        if (i != current) Navigator.pushNamedAndRemoveUntil(
-          context, items[i]['route'] as String, (r) => false);
+        if (i != current) {
+          final target = items[i]['route'] as String;
+          if (target == '/home') {
+            Navigator.pushNamedAndRemoveUntil(context, target, (r) => false);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(context, target, ModalRoute.withName('/home'));
+          }
+        }
       },
       items: items.map((item) => BottomNavigationBarItem(
         icon: Icon(item['icon'] as IconData),

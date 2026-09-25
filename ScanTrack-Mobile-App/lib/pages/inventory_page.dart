@@ -66,7 +66,6 @@ class _InventoryPageState extends State<InventoryPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inventory'),
-        automaticallyImplyLeading: false,
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_outlined)),
           IconButton(

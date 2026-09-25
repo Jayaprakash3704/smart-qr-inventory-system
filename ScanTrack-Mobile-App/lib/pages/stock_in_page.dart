@@ -79,7 +79,7 @@ class _StockInPageState extends State<StockInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Stock In'), automaticallyImplyLeading: false),
+      appBar: AppBar(title: const Text('Stock In')),
       body: _loading 
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
