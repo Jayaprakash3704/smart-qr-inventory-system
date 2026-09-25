@@ -4,8 +4,8 @@ set -e
 echo "Updating system..."
 sudo apt-get update -y
 
-echo "Installing Node.js, npm, and Nginx..."
-sudo apt-get install -y nodejs npm nginx
+echo "Installing Node.js, npm, Nginx, and build tools..."
+sudo apt-get install -y nodejs npm nginx build-essential python3
 
 echo "Extracting backend..."
 tar -xzvf backend.tar.gz
