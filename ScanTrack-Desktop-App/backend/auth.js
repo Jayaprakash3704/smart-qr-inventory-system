@@ -28,8 +28,19 @@ export const requireAuth = async (req, res, next) => {
     req.user = decodedToken; // contains uid, email, etc.
     
     // Lookup role in SQLite
-    const stmt = db.prepare('SELECT role FROM users WHERE uid = ?');
-    const userRow = stmt.get(req.user.uid);
+    const stmt = db.prepare('SELECT role, uid FROM users WHERE uid = ?');
+    let userRow = stmt.get(req.user.uid);
+    
+    if (!userRow && req.user.email) {
+      // Fallback: Check if they exist by email (Google Sign-In might generate a different UID)
+      const emailStmt = db.prepare('SELECT role, uid FROM users WHERE email = ?');
+      userRow = emailStmt.get(req.user.email);
+      
+      if (userRow) {
+        // Update their UID in SQLite to match the new Firebase Google UID
+        db.prepare('UPDATE users SET uid = ? WHERE email = ?').run(req.user.uid, req.user.email);
+      }
+    }
     
     if (userRow) {
       req.user.role = userRow.role;
