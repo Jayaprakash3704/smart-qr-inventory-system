@@ -89,11 +89,11 @@ class _QrScannerPageState extends State<QrScannerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Stack(
         children: [
           // Solid background
-          Container(color: Colors.black),
+          Container(color: const Color(0xFFF8FAFC)),
           
           // Restricted Scanner Window
           Center(
@@ -105,11 +105,10 @@ class _QrScannerPageState extends State<QrScannerPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(17), // slightly less than border radius to fit inside
+                borderRadius: BorderRadius.circular(17),
                 child: MobileScanner(
                   controller: _ctrl,
                   onDetect: _onDetect,
-                  // The camera will now only render inside this 250x250 box
                 ),
               ),
             ),
@@ -122,13 +121,13 @@ class _QrScannerPageState extends State<QrScannerPage> {
               child: Row(
                 children: [
                   Container(
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.05), shape: BoxShape.circle),
                     child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: const Icon(Icons.close, color: Color(0xFF1E293B)),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                  const Expanded(child: Text('Scan QR Code', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+                  const Expanded(child: Text('Scan QR Code', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF1E293B), fontSize: 18, fontWeight: FontWeight.bold))),
                   const SizedBox(width: 48), // Balance for back button
                 ],
               ),
@@ -145,7 +144,7 @@ class _QrScannerPageState extends State<QrScannerPage> {
                 const Text(
                   'Align QR code within the frame\nor enter SKU manually',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
                 ),
                 const SizedBox(height: 16),
                 Row(
