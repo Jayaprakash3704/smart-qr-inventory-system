@@ -500,13 +500,43 @@ app.post('/api/orders', requireAuth, requireRole('staff'), (req, res) => {
   
   const id = 'ORD-' + Date.now();
   const name = customer_name || 'Internal Order';
-  try {
-    db.prepare('INSERT INTO orders (id, customer_name, items, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-      id, name, JSON.stringify(items), notes || '', 'PENDING', new Date().toISOString(), new Date().toISOString()
+  
+  const tx = db.transaction(() => {
+    // 1. Insert order as APPROVED
+    db.prepare('INSERT INTO orders (id, customer_name, items, notes, status, created_at, updated_at, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+      id, name, JSON.stringify(items), notes || '', 'APPROVED', new Date().toISOString(), new Date().toISOString(), new Date().toISOString()
     );
+
+    // 2. Deduct stock for each item
+    for (const item of items) {
+      if (!item.product_id) continue;
+      const product = db.prepare('SELECT * FROM products WHERE id = ?').get(item.product_id);
+      if (!product) throw new Error('PRODUCT_NOT_FOUND:' + item.product_name);
+      
+      const newQty = product.quantity - parseInt(item.quantity || 0);
+      if (newQty < 0) throw new Error('INSUFFICIENT:' + product.name);
+      
+      let newStatus = product.status;
+      if (newQty === 0) newStatus = 'OUT_OF_STOCK';
+      else if (newQty <= (product.low_stock_threshold || 5)) newStatus = 'LOW_STOCK';
+      
+      db.prepare('UPDATE products SET quantity = ?, status = ?, updated_at = ? WHERE id = ?').run(newQty, newStatus, new Date().toISOString(), product.id);
+      
+      // Log transaction
+      db.prepare('INSERT INTO transactions (id, product_id, product_name, sku, type, quantity, quantity_before, quantity_after, reason, notes, performed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+        'TXN-' + Date.now() + Math.floor(Math.random()*1000), product.id, product.name, product.sku, 'STOCK_OUT', item.quantity, product.quantity, newQty, 'ORDER_FULFILLMENT', `Sale ${id}`, req.user.uid
+      );
+    }
+  });
+
+  try {
+    tx();
     res.status(201).json({ success: true, id });
   } catch (err) {
     console.error('Order create error:', err);
+    if (err.message && err.message.startsWith('INSUFFICIENT:')) {
+      return res.status(400).json({ error: 'Insufficient stock for ' + err.message.split(':')[1] });
+    }
     res.status(500).json({ error: 'Failed to create order' });
   }
 });

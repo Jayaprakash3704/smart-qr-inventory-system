@@ -173,6 +173,20 @@ class ApiService {
     return List<Map<String, dynamic>>.from(raw as List);
   }
 
+  Future<List<Map<String, dynamic>>> getSales() async {
+    final raw = await get('/api/orders');
+    return List<Map<String, dynamic>>.from(raw as List);
+  }
+
+  Future<Map<String, dynamic>> createSale(String customerName, List<Map<String, dynamic>> items, String notes) async {
+    final raw = await post('/api/orders', {
+      'customer_name': customerName,
+      'items': items,
+      'notes': notes,
+    });
+    return Map<String, dynamic>.from(raw as Map);
+  }
+
   Future<Map<String, dynamic>> getSummary() async {
     final raw = await get('/api/reports/summary');
     return Map<String, dynamic>.from(raw as Map);

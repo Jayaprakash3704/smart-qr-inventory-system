@@ -131,6 +131,13 @@ class _HomePageState extends State<HomePage> {
                       colors: [const Color(0xFFEF4444), const Color(0xFFB91C1C)],
                       route: '/stock-out',
                     ),
+                    _actionCard(
+                      context,
+                      label: 'Sales',
+                      icon: Icons.shopping_cart_outlined,
+                      colors: [const Color(0xFF4F46E5), const Color(0xFF3730A3)],
+                      route: '/sales',
+                    ),
                   ],
                 ),
 

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:qr_reader/pages/welcome_page.dart';
+import 'package:qr_reader/pages/sales_page.dart' as qr_reader;
 import 'package:qr_reader/pages/home_page.dart';
 import 'package:qr_reader/pages/inventory_page.dart';
 import 'package:qr_reader/pages/product_detail_page.dart';
@@ -66,6 +67,7 @@ class ScanTrackApp extends StatelessWidget {
         '/qr-scanner':   (_) => const QrScannerPage(),
         '/stock-in':     (_) => const StockInPage(),
         '/stock-out':    (_) => const StockOutPage(),
+        '/sales':        (_) => const qr_reader.SalesPage(),
         '/notifications':(_) => const NotificationsPage(),
         '/settings':     (_) => const SettingsPage(),
       },
