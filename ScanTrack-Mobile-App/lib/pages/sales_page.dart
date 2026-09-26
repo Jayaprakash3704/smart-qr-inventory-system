@@ -91,11 +91,10 @@ class _CreateSaleModal extends StatefulWidget {
 class _CreateSaleModalState extends State<_CreateSaleModal> {
   final _formKey = GlobalKey<FormState>();
   final _customerCtrl = TextEditingController();
-  final _qtyCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
   List<Map<String, dynamic>> _products = [];
-  String? _selectedProductId;
+  List<Map<String, dynamic>> _items = [{'product_id': null, 'quantity': 1, 'unit_price': 0.0}];
   bool _submitting = false;
 
   @override
@@ -106,20 +105,40 @@ class _CreateSaleModalState extends State<_CreateSaleModal> {
     });
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _selectedProductId == null) {
-      if (_selectedProductId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please scan or select a product')));
+  void _addItem() {
+    setState(() {
+      _items.add({'product_id': null, 'quantity': 1, 'unit_price': 0.0});
+    });
+  }
+
+  void _removeItem(int index) {
+    setState(() {
+      _items.removeAt(index);
+    });
+  }
+
+  void _updateItem(int index, String key, dynamic value) {
+    setState(() {
+      _items[index][key] = value;
+      if (key == 'product_id') {
+        final product = _products.firstWhere((p) => p['id'] == value, orElse: () => {});
+        _items[index]['unit_price'] = (product['sell_price'] ?? 0).toDouble();
       }
+    });
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_items.any((i) => i['product_id'] == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a product for each item')));
       return;
     }
 
     setState(() => _submitting = true);
     try {
-      final qty = int.parse(_qtyCtrl.text);
       await ApiService().createSale(
         _customerCtrl.text.trim(),
-        [{'product_id': _selectedProductId, 'quantity': qty}],
+        _items,
         _notesCtrl.text.trim(),
       );
       if (mounted) {
@@ -165,47 +184,100 @@ class _CreateSaleModalState extends State<_CreateSaleModal> {
               decoration: const InputDecoration(labelText: 'Customer Name', prefixIcon: Icon(Icons.person)),
               validator: (v) => v!.isEmpty ? 'Required' : null,
             ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () async {
-                final scannedId = await Navigator.push<String>(
-                  context,
-                  MaterialPageRoute(builder: (_) => const qr_scanner.QrScannerPage(returnResult: true)),
-                );
-                if (scannedId != null && mounted) {
-                  setState(() => _selectedProductId = scannedId);
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Sale Items *', style: TextStyle(fontWeight: FontWeight.bold)),
+                TextButton.icon(
+                  onPressed: _addItem,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add Item'),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.qr_code_scanner, color: Color(0xFF4F46E5)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _selectedProductId == null
-                            ? 'Tap to scan product'
-                            : _products.firstWhere((p) => p['id'] == _selectedProductId, orElse: () => {'name': 'Unknown'})['name'] ?? 'Unknown',
-                        style: TextStyle(
-                          color: _selectedProductId == null ? Colors.grey : Colors.black,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _qtyCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Quantity', prefixIcon: Icon(Icons.production_quantity_limits)),
-              validator: (v) => (v == null || int.tryParse(v) == null || int.parse(v) <= 0) ? 'Valid qty required' : null,
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _items.length,
+                itemBuilder: (context, i) {
+                  final qty = _items[i]['quantity'] as int;
+                  final unitPrice = _items[i]['unit_price'] as double;
+                  final total = qty * unitPrice;
+                  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _items[i]['product_id'],
+                                isExpanded: true,
+                                hint: const Text('Select product...'),
+                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                                items: _products.where((p) => p['status'] != 'OUT_OF_STOCK').map((p) {
+                                  return DropdownMenuItem<String>(
+                                    value: p['id'],
+                                    child: Text('${p['name']} (${p['quantity']} ${p['unit']} left)'),
+                                  );
+                                }).toList(),
+                                onChanged: (v) => _updateItem(i, 'product_id', v),
+                              ),
+                            ),
+                            if (_items.length > 1) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () => _removeItem(i),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: qty.toString(),
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Qty', contentPadding: EdgeInsets.symmetric(horizontal: 12)),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _items[i]['quantity'] = int.tryParse(v) ?? 1;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Text(
+                                  '₹${total.toStringAsFixed(2)}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(

@@ -177,10 +177,10 @@ export default function Orders() {
 function CreateOrderModal({ products, onClose, onCreated }) {
   const [customerName, setCustomerName] = useState('')
   const [notes, setNotes] = useState('')
-  const [items, setItems] = useState([{ product_id: '', product_name: '', quantity: 1 }])
+  const [items, setItems] = useState([{ product_id: '', product_name: '', quantity: 1, unit_price: 0 }])
   const [loading, setLoading] = useState(false)
 
-  const addItem = () => setItems(prev => [...prev, { product_id: '', product_name: '', quantity: 1 }])
+  const addItem = () => setItems(prev => [...prev, { product_id: '', product_name: '', quantity: 1, unit_price: 0 }])
   const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i))
   const updateItem = (i, k, v) => setItems(prev => prev.map((item, idx) => idx === i ? { ...item, [k]: v } : item))
 
@@ -188,6 +188,7 @@ function CreateOrderModal({ products, onClose, onCreated }) {
     const product = products.find(p => p.id === productId)
     updateItem(i, 'product_id', productId)
     updateItem(i, 'product_name', product?.name || '')
+    updateItem(i, 'unit_price', product?.sell_price || 0)
   }
 
   const handleSubmit = async (e) => {
@@ -247,6 +248,12 @@ function CreateOrderModal({ products, onClose, onCreated }) {
                       value={item.quantity}
                       onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 1)}
                     />
+                    <div
+                      className="input flex items-center justify-center bg-gray-50"
+                      style={{ width: 100, fontWeight: 'bold' }}
+                    >
+                      ₹{(item.quantity * item.unit_price).toFixed(2)}
+                    </div>
                     {items.length > 1 && (
                       <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => removeItem(i)}>
                         <Trash2 size={13} />
