@@ -181,13 +181,14 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _fetchingRole = false;
+  String? _authError;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting || _fetchingRole) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
               child: Column(
@@ -203,15 +204,22 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
 
         if (snapshot.hasData) {
-          // Fetch role from backend on every auth state change (login/token refresh)
-          if (!_fetchingRole) {
+          // Fetch role from backend on every auth state change
+          if (!_fetchingRole && _authError == null) {
             _fetchingRole = true;
             UserSession().fetch().then((_) {
               if (mounted) setState(() => _fetchingRole = false);
-            }).catchError((_) {
-              if (mounted) setState(() => _fetchingRole = false);
+            }).catchError((e) async {
+              // If backend rejects them (e.g. 403), sign out and show error
+              await AuthService.signOut();
+              if (mounted) {
+                setState(() {
+                  _fetchingRole = false;
+                  _authError = 'Access Denied: You are not registered in the system.';
+                });
+              }
             });
-            // Show loader while fetching
+            
             return const Scaffold(
               body: Center(
                 child: Column(
@@ -225,10 +233,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
               ),
             );
           }
-          return const WelcomePage();
+          
+          if (_authError == null && !_fetchingRole) {
+            return const WelcomePage();
+          }
         }
 
-        return const LoginPage();
+        return LoginPage(externalError: _authError);
       },
     );
   }

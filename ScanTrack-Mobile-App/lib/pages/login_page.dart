@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final String? externalError;
+  const LoginPage({super.key, this.externalError});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -14,13 +15,31 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    _error = widget.externalError;
+  }
+
+  @override
+  void didUpdateWidget(LoginPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.externalError != oldWidget.externalError) {
+      setState(() { _error = widget.externalError; });
+    }
+  }
+
   void _loginEmail() async {
     setState(() { _loading = true; _error = null; });
     try {
       await AuthService.signInWithEmail(_emailCtrl.text.trim(), _passCtrl.text);
       // Navigation is handled by auth wrapper in main.dart
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (e.toString().contains('invalid-credential')) {
+        setState(() => _error = 'Invalid email or password.');
+      } else {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -29,9 +48,16 @@ class _LoginPageState extends State<LoginPage> {
   void _loginGoogle() async {
     setState(() { _loading = true; _error = null; });
     try {
-      await AuthService.signInWithGoogle();
+      final user = await AuthService.signInWithGoogle();
+      if (user == null) {
+        setState(() => _error = 'Sign in aborted.');
+      }
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (e.toString().contains('sign_in_failed') || e.toString().contains('ApiException: 10')) {
+        setState(() => _error = 'Google Sign-In failed. Missing SHA-1 key in Firebase?');
+      } else {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

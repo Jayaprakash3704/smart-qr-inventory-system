@@ -33,12 +33,20 @@ class UserSession {
         await prefs.setString(_roleKey, _role);
         await prefs.setString(_emailKey, _email);
       }
+    } on ApiException catch (e) {
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        rethrow; // Force logout for auth/role errors
+      }
+      _fallbackToCache();
     } catch (_) {
-      // Network error: try reading from cache
-      final prefs = await SharedPreferences.getInstance();
-      _role = prefs.getString(_roleKey) ?? 'staff';
-      _email = prefs.getString(_emailKey) ?? (AuthService.currentUser?.email ?? '');
+      _fallbackToCache();
     }
+  }
+
+  Future<void> _fallbackToCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    _role = prefs.getString(_roleKey) ?? 'staff';
+    _email = prefs.getString(_emailKey) ?? (AuthService.currentUser?.email ?? '');
   }
 
   /// Clears session data on sign-out.
