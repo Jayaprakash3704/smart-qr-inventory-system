@@ -48,7 +48,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [
-          if (_notifs.any((n) => !(n['isRead'] ?? false)))
+          if (_notifs.any((n) => !(n['isRead'] == true || n['isRead'] == 1)))
             TextButton(
               onPressed: _markAllRead,
               child: const Text('Mark All Read'),
@@ -95,7 +95,7 @@ class _NotifTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRead = notif['isRead'] ?? false;
+    final isRead = notif['isRead'] == true || notif['isRead'] == 1;
     final type = notif['type'] ?? 'INFO';
     
     final iconMap = {

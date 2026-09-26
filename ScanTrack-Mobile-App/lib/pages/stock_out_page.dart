@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_reader/services/api_service.dart';
+import 'package:qr_reader/pages/home_page.dart' show buildBottomNav;
 
 class StockOutPage extends StatefulWidget {
   const StockOutPage({super.key});
@@ -187,6 +188,8 @@ class _StockOutPageState extends State<StockOutPage> {
               ),
             ),
           ),
+      bottomNavigationBar: buildBottomNav(context, 3),
     );
   }
 }
+

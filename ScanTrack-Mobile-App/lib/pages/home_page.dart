@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_reader/services/api_service.dart';
+import 'package:qr_reader/services/user_session.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -273,7 +274,7 @@ class _HomePageState extends State<HomePage> {
 }
 
 // ── Bottom Nav helper (shared) ────────────────────────────────────────
-Widget buildBottomNav(BuildContext context, int current) {
+Widget buildBottomNav(BuildContext context, int current, {int unreadNotifs = 0}) {
   final items = [
     {'icon': Icons.home_outlined, 'activeIcon': Icons.home, 'label': 'Home', 'route': '/home'},
     {'icon': Icons.inventory_2_outlined, 'activeIcon': Icons.inventory_2, 'label': 'Inventory', 'route': '/inventory'},
@@ -299,11 +300,27 @@ Widget buildBottomNav(BuildContext context, int current) {
           }
         }
       },
-      items: items.map((item) => BottomNavigationBarItem(
-        icon: Icon(item['icon'] as IconData),
-        activeIcon: Icon(item['activeIcon'] as IconData),
-        label: item['label'] as String,
-      )).toList(),
+      items: items.asMap().entries.map((entry) {
+        final i = entry.key;
+        final item = entry.value;
+        // Show badge on Alerts (index 4)
+        final showBadge = i == 4 && unreadNotifs > 0;
+        return BottomNavigationBarItem(
+          icon: showBadge
+            ? Badge(
+                label: Text('$unreadNotifs', style: const TextStyle(fontSize: 9)),
+                child: Icon(item['icon'] as IconData),
+              )
+            : Icon(item['icon'] as IconData),
+          activeIcon: showBadge
+            ? Badge(
+                label: Text('$unreadNotifs', style: const TextStyle(fontSize: 9)),
+                child: Icon(item['activeIcon'] as IconData),
+              )
+            : Icon(item['activeIcon'] as IconData),
+          label: item['label'] as String,
+        );
+      }).toList(),
     ),
   );
 }

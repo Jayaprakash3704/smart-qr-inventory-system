@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { Plus, ShoppingCart, CheckCircle, XCircle, Clock, Package, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAuth } from '../contexts/AuthContext'
 
 function OrderStatusBadge({ status }) {
   const map = {
@@ -17,6 +18,8 @@ function OrderStatusBadge({ status }) {
 export default function Orders() {
   const [showCreate, setShowCreate] = useState(false)
   const qc = useQueryClient()
+  const { currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'admin'
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['orders'],
@@ -132,7 +135,7 @@ export default function Orders() {
                     <td><span className="text-xs text-muted">{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</span></td>
                     <td>
                       <div className="flex gap-2">
-                        {order.status === 'PENDING' && (
+                        {order.status === 'PENDING' && isAdmin && (
                           <>
                             <button
                               className="btn btn-success btn-sm"
@@ -147,6 +150,9 @@ export default function Orders() {
                               Cancel
                             </button>
                           </>
+                        )}
+                        {order.status === 'PENDING' && !isAdmin && (
+                          <span className="text-xs text-muted" style={{ fontStyle: 'italic' }}>Awaiting admin approval</span>
                         )}
                         {order.status !== 'PENDING' && (
                           <span className="text-xs text-muted">{order.approved_at ? `Processed ${new Date(order.approved_at).toLocaleDateString()}` : '—'}</span>

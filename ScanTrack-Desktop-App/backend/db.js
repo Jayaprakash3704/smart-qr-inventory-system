@@ -23,6 +23,7 @@ db.exec(`
     uid TEXT PRIMARY KEY,
     email TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('admin', 'staff')),
+    display_name TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -90,5 +91,9 @@ db.exec(`
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
+
+// ─── Migrations — add columns to existing DBs safely ──────────────────────────
+const runMigration = (sql) => { try { db.exec(sql); } catch (_) {} };
+runMigration('ALTER TABLE users ADD COLUMN display_name TEXT');
 
 export default db;

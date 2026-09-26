@@ -65,6 +65,15 @@ class ApiService {
     }
   }
 
+  Future<dynamic> patch(String path, Map<String, dynamic> body) async {
+    try {
+      final res = await http.patch(_url(path), headers: await _headers, body: jsonEncode(body)).timeout(const Duration(seconds: 15));
+      return _handleResponse(res);
+    } on SocketException {
+      throw ApiException(0, 'Cannot connect to server');
+    }
+  }
+
   Future<dynamic> delete(String path) async {
     try {
       final res = await http.delete(_url(path), headers: await _headers).timeout(const Duration(seconds: 15));

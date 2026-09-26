@@ -4,6 +4,7 @@ import axios from 'axios'
 import { Link } from 'react-router-dom'
 import { Package, Search, Plus, Filter, RefreshCw, QrCode } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAuth } from '../contexts/AuthContext'
 
 const CATEGORIES = ['All', 'Electronics', 'Food & Beverage', 'Clothing', 'Office Supplies', 'Tools', 'Medical', 'General']
 
@@ -22,6 +23,8 @@ export default function Inventory() {
   const [category, setCategory] = useState('All')
   const [showAdd, setShowAdd] = useState(false)
   const qc = useQueryClient()
+  const { currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'admin'
 
   const { data: products = [], isLoading, refetch } = useQuery({
     queryKey: ['products'],
@@ -52,9 +55,11 @@ export default function Inventory() {
           <button className="btn btn-secondary btn-sm" onClick={() => refetch()}>
             <RefreshCw size={14} /> Refresh
           </button>
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-            <Plus size={15} /> Add Product
-          </button>
+          {isAdmin && (
+            <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+              <Plus size={15} /> Add Product
+            </button>
+          )}
         </div>
       </div>
 

@@ -13,7 +13,6 @@ import Reports from './pages/Reports'
 import Orders from './pages/Orders'
 import Notifications from './pages/Notifications'
 import Settings from './pages/Settings'
-import Users from './pages/Users'
 
 export default function App() {
   return (
@@ -23,17 +22,18 @@ export default function App() {
         
         <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
+          {/* ─── All authenticated users ─── */}
           <Route path="/dashboard"     element={<Dashboard />} />
           <Route path="/inventory"     element={<Inventory />} />
           <Route path="/inventory/:id" element={<ItemDetail />} />
-          <Route path="/qr-generator"  element={<QRGenerator />} />
           <Route path="/stock-in"      element={<StockIn />} />
           <Route path="/stock-out"     element={<StockOut />} />
           <Route path="/reports"       element={<Reports />} />
           <Route path="/orders"        element={<Orders />} />
           <Route path="/notifications" element={<Notifications />} />
-          <Route path="/users"         element={<PrivateRoute requireAdmin><Users /></PrivateRoute>} />
-          <Route path="/settings"      element={<PrivateRoute requireAdmin><Settings /></PrivateRoute>} />
+          <Route path="/settings"      element={<Settings />} />
+          {/* ─── Admin only ─── */}
+          <Route path="/qr-generator"  element={<PrivateRoute requireAdmin><QRGenerator /></PrivateRoute>} />
         </Route>
       </Routes>
     </AuthProvider>

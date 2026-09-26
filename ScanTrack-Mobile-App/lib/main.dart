@@ -12,13 +12,15 @@ import 'package:qr_reader/pages/stock_out_page.dart';
 import 'package:qr_reader/pages/notifications_page.dart';
 import 'package:qr_reader/pages/settings_page.dart';
 import 'package:qr_reader/pages/login_page.dart';
+import 'package:qr_reader/pages/splash_screen.dart';
 import 'package:qr_reader/services/offline_sync_service.dart';
+import 'package:qr_reader/services/user_session.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase (using default configuration if available via google-services.json)
   try {
     await Firebase.initializeApp();
   } catch (e) {
@@ -55,7 +57,7 @@ class ScanTrackApp extends StatelessWidget {
       title: 'ScanTrack',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      home: const AuthWrapper(),
+      home: const SplashScreen(),
       routes: {
         '/home':         (_) => const HomePage(),
         '/inventory':    (_) => const InventoryPage(),
@@ -76,8 +78,7 @@ class ScanTrackApp extends StatelessWidget {
   }
 
   ThemeData _buildTheme() {
-    const brand = Color(0xFFF97316); // Orange-500
-    const brandDark = Color(0xFFEA6D00);
+    const brand = Color(0xFFF97316);
     const bg = Color(0xFFF8FAFC);
     const surface = Colors.white;
 
@@ -101,10 +102,8 @@ class ScanTrackApp extends StatelessWidget {
         scrolledUnderElevation: 1,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          fontSize: 19,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF1E293B),
-          letterSpacing: -0.3,
+          fontSize: 19, fontWeight: FontWeight.w700,
+          color: Color(0xFF1E293B), letterSpacing: -0.3,
         ),
         iconTheme: IconThemeData(color: Color(0xFF64748B)),
         systemOverlayStyle: SystemUiOverlayStyle(
@@ -172,20 +171,63 @@ class ScanTrackApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+/// AuthWrapper — shows loading while resolving Firebase auth state AND user role.
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _fetchingRole = false;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        if (snapshot.connectionState == ConnectionState.waiting || _fetchingRole) {
+          return const Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading...', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
+                ],
+              ),
+            ),
+          );
         }
+
         if (snapshot.hasData) {
+          // Fetch role from backend on every auth state change (login/token refresh)
+          if (!_fetchingRole) {
+            _fetchingRole = true;
+            UserSession().fetch().then((_) {
+              if (mounted) setState(() => _fetchingRole = false);
+            }).catchError((_) {
+              if (mounted) setState(() => _fetchingRole = false);
+            });
+            // Show loader while fetching
+            return const Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Verifying access...', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
+                  ],
+                ),
+              ),
+            );
+          }
           return const WelcomePage();
         }
+
         return const LoginPage();
       },
     );

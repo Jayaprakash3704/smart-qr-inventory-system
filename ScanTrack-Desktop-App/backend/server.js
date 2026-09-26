@@ -165,18 +165,61 @@ app.post('/api/users', requireAuth, requireRole('admin'), async (req, res) => {
 });
 
 app.get('/api/users/me', requireAuth, (req, res) => {
-  res.json({ uid: req.user.uid, email: req.user.email, role: req.user.role });
+  const user = db.prepare('SELECT uid, email, role FROM users WHERE uid = ?').get(req.user.uid);
+  res.json(user || { uid: req.user.uid, email: req.user.email || '', role: req.user.role || 'staff' });
+});
+
+// User updates their own display name / email (non-role fields)
+app.patch('/api/users/me', requireAuth, async (req, res) => {
+  const { display_name } = req.body;
+  try {
+    if (display_name !== undefined) {
+      db.prepare('UPDATE users SET display_name = ? WHERE uid = ?').run(display_name, req.user.uid);
+    }
+    const updated = db.prepare('SELECT uid, email, role, display_name FROM users WHERE uid = ?').get(req.user.uid);
+    res.json(updated);
+  } catch (err) {
+    console.error('Profile update error:', err);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Admin changes any user's role
+app.patch('/api/users/:uid', requireAuth, requireRole('admin'), (req, res) => {
+  const { role } = req.body;
+  if (!role || !['admin', 'staff'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  try {
+    const info = db.prepare('UPDATE users SET role = ? WHERE uid = ?').run(role, req.params.uid);
+    if (info.changes === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Admin deletes a user
+app.delete('/api/users/:uid', requireAuth, requireRole('admin'), async (req, res) => {
+  const { uid } = req.params;
+  if (uid === req.user.uid) return res.status(400).json({ error: 'Cannot delete yourself' });
+  try {
+    db.prepare('DELETE FROM users WHERE uid = ?').run(uid);
+    try { await auth.deleteUser(uid); } catch (_) {} // Best-effort Firebase deletion
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
 });
 
 app.get('/api/users', requireAuth, requireRole('admin'), (req, res) => {
   try {
-    const users = db.prepare('SELECT uid, email, role FROM users ORDER BY email ASC').all();
+    const users = db.prepare('SELECT uid, email, role, display_name FROM users ORDER BY email ASC').all();
     res.json(users);
   } catch (err) {
     console.error('Error fetching users:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
+
 
 // ─── PRODUCTS (Staff & Admin) ────────────────────────────────────────────────
 
@@ -365,7 +408,7 @@ app.post('/api/products/:id/stock-in', requireAuth, requireRole('staff'), (req, 
 
   try {
     const { product, newQty } = stockInTx(productId, value.quantity, value.notes, value.supplier, req.user.uid);
-    createNotification('📦 Stock In', `${value.quantity} added to "${product.name}".`, 'STOCK_IN');
+    // No notification for regular stock-in — only alert on low/out of stock
     broadcast('stockUpdate', { id: productId, quantity: newQty });
     res.json({ success: true, new_quantity: newQty });
   } catch (err) {
@@ -440,7 +483,12 @@ app.post('/api/qr/scan', requireAuth, requireRole('staff'), (req, res) => {
 app.get('/api/orders', requireAuth, requireRole('staff'), (req, res) => {
   try {
     const orders = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
-    res.json(orders);
+    // Parse JSON items string to array so frontend can .map() over them
+    const parsed = orders.map(o => ({
+      ...o,
+      items: (() => { try { return JSON.parse(o.items || '[]'); } catch (_) { return []; } })()
+    }));
+    res.json(parsed);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch orders' });
   }
@@ -448,12 +496,13 @@ app.get('/api/orders', requireAuth, requireRole('staff'), (req, res) => {
 
 app.post('/api/orders', requireAuth, requireRole('staff'), (req, res) => {
   const { customer_name, items, notes } = req.body;
-  if (!customer_name || !items || items.length === 0) return res.status(400).json({ error: 'Missing required fields' });
+  if (!items || items.length === 0) return res.status(400).json({ error: 'At least one item required' });
   
   const id = 'ORD-' + Date.now();
+  const name = customer_name || 'Internal Order';
   try {
     db.prepare('INSERT INTO orders (id, customer_name, items, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-      id, customer_name, JSON.stringify(items), notes || '', 'PENDING', new Date().toISOString(), new Date().toISOString()
+      id, name, JSON.stringify(items), notes || '', 'PENDING', new Date().toISOString(), new Date().toISOString()
     );
     res.status(201).json({ success: true, id });
   } catch (err) {
@@ -461,6 +510,7 @@ app.post('/api/orders', requireAuth, requireRole('staff'), (req, res) => {
     res.status(500).json({ error: 'Failed to create order' });
   }
 });
+
 
 app.post('/api/orders/:id/approve', requireAuth, requireRole('staff'), (req, res) => {
   const { id } = req.params;
@@ -550,6 +600,19 @@ app.delete('/api/notifications/:id', requireAuth, requireRole('admin'), (req, re
 });
 
 // ─── REPORTS ─────────────────────────────────────────────────────────────────
+app.get('/api/reports/low-stock', requireAuth, requireRole('staff'), (req, res) => {
+  try {
+    const items = db.prepare(`
+      SELECT * FROM products 
+      WHERE status IN ('LOW_STOCK', 'OUT_OF_STOCK') 
+      ORDER BY quantity ASC
+    `).all();
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch low stock items' });
+  }
+});
+
 app.get('/api/reports/summary', requireAuth, requireRole('staff'), (req, res) => {
   const totalProducts = db.prepare('SELECT COUNT(*) as c FROM products').get().c;
   const inStock = db.prepare("SELECT COUNT(*) as c FROM products WHERE status='IN_STOCK'").get().c;
@@ -560,7 +623,17 @@ app.get('/api/reports/summary', requireAuth, requireRole('staff'), (req, res) =>
   const stockInQty = db.prepare("SELECT SUM(quantity) as s FROM transactions WHERE type='STOCK_IN'").get().s || 0;
   const stockOutQty = db.prepare("SELECT SUM(quantity) as s FROM transactions WHERE type='STOCK_OUT'").get().s || 0;
 
-  const categoryBreakdown = db.prepare('SELECT category as name, COUNT(*) as count FROM products GROUP BY category').all();
+  // Inventory value metrics
+  const totalInventoryValue = db.prepare('SELECT SUM(quantity * cost_price) as v FROM products').get().v || 0;
+  const potentialRevenue = db.prepare('SELECT SUM(quantity * sell_price) as v FROM products').get().v || 0;
+
+  // Order counts
+  const totalOrders = db.prepare('SELECT COUNT(*) as c FROM orders').get().c;
+  const pendingOrders = db.prepare("SELECT COUNT(*) as c FROM orders WHERE status='PENDING'").get().c;
+  const approvedOrders = db.prepare("SELECT COUNT(*) as c FROM orders WHERE status='APPROVED'").get().c;
+  const cancelledOrders = db.prepare("SELECT COUNT(*) as c FROM orders WHERE status='CANCELLED'").get().c;
+
+  const categoryBreakdown = db.prepare('SELECT category as name, COUNT(*) as count FROM products GROUP BY category ORDER BY count DESC').all();
   
   const statusBreakdown = [
     { name: 'In Stock', count: inStock },
@@ -568,8 +641,17 @@ app.get('/api/reports/summary', requireAuth, requireRole('staff'), (req, res) =>
     { name: 'Out of Stock', count: outOfStock },
   ];
 
-  // Daily transactions (last 7 days)
-  const txns = db.prepare(`SELECT type, quantity, date(timestamp) as date FROM transactions WHERE timestamp >= date('now', '-7 days')`).all();
+  // Top 5 most transacted products
+  const topProducts = db.prepare(`
+    SELECT product_name as name, product_id as id, COUNT(*) as count 
+    FROM transactions 
+    GROUP BY product_id 
+    ORDER BY count DESC 
+    LIMIT 5
+  `).all();
+
+  // Daily transactions (last 30 days)
+  const txns = db.prepare(`SELECT type, quantity, date(timestamp) as date FROM transactions WHERE timestamp >= date('now', '-30 days')`).all();
   const dailyMap = {};
   txns.forEach(t => {
     if (!dailyMap[t.date]) dailyMap[t.date] = { date: t.date, stockIn: 0, stockOut: 0 };
@@ -580,9 +662,35 @@ app.get('/api/reports/summary', requireAuth, requireRole('staff'), (req, res) =>
 
   res.json({
     totalProducts, inStock, lowStock, outOfStock, totalQuantity,
-    stockInQty, stockOutQty, pendingOrders: 0, approvedOrders: 0, totalOrders: 0,
-    categoryBreakdown, statusBreakdown, dailyTransactions, topProducts: []
+    stockInQty, stockOutQty,
+    totalInventoryValue: Math.round(totalInventoryValue * 100) / 100,
+    potentialRevenue: Math.round(potentialRevenue * 100) / 100,
+    totalOrders, pendingOrders, approvedOrders, cancelledOrders,
+    categoryBreakdown, statusBreakdown, dailyTransactions, topProducts
   });
+});
+
+app.get('/api/reports/transactions', requireAuth, requireRole('staff'), (req, res) => {
+  const { from, to, type, product_id, page = 1, limit: lim = 50 } = req.query;
+  const n = Math.min(parseInt(lim) || 50, 200);
+  const offset = (parseInt(page) - 1) * n;
+
+  let query = 'SELECT * FROM transactions WHERE 1=1';
+  const params = [];
+  if (from) { query += ' AND timestamp >= ?'; params.push(from); }
+  if (to)   { query += ' AND timestamp <= ?'; params.push(to + ' 23:59:59'); }
+  if (type) { query += ' AND type = ?'; params.push(type.toUpperCase()); }
+  if (product_id) { query += ' AND product_id = ?'; params.push(product_id); }
+  query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+  params.push(n, offset);
+
+  try {
+    const txns = db.prepare(query).all(params);
+    const total = db.prepare('SELECT COUNT(*) as c FROM transactions WHERE 1=1').get().c;
+    res.json({ transactions: txns, total, page: parseInt(page), limit: n });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
 });
 
 // ─── SPA FALLBACK ────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import {
   Edit2, Trash2, MapPin, Tag, User,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAuth } from '../contexts/AuthContext'
 
 function StatusBadge({ status }) {
   const map = {
@@ -22,6 +23,8 @@ export default function ItemDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'admin'
   const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
 
@@ -70,12 +73,16 @@ export default function ItemDetail() {
           <ArrowLeft size={14} /> Back
         </button>
         <div className="flex gap-2">
-          <button className="btn btn-secondary btn-sm" onClick={() => setShowEdit(true)}>
-            <Edit2 size={13} /> Edit
-          </button>
-          <button className="btn btn-danger btn-sm" onClick={() => setShowDelete(true)}>
-            <Trash2 size={13} /> Delete
-          </button>
+          {isAdmin && (
+            <>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowEdit(true)}>
+                <Edit2 size={13} /> Edit
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={() => setShowDelete(true)}>
+                <Trash2 size={13} /> Delete
+              </button>
+            </>
+          )}
         </div>
       </div>
 
