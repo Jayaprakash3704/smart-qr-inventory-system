@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_reader/services/api_service.dart';
 import 'package:qr_reader/pages/home_page.dart' show buildBottomNav;
+import 'package:qr_reader/services/user_session.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -68,17 +69,18 @@ class _InventoryPageState extends State<InventoryPage> {
         title: const Text('Inventory'),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_outlined)),
-          IconButton(
-            onPressed: _showAddProduct,
-            icon: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(8),
+          if (UserSession().isAdmin)
+            IconButton(
+              onPressed: _showAddProduct,
+              icon: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 18),
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 18),
             ),
-          ),
           const SizedBox(width: 4),
         ],
       ),

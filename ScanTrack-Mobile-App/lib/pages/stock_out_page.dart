@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_reader/services/api_service.dart';
 import 'package:qr_reader/pages/home_page.dart' show buildBottomNav;
+import 'package:qr_reader/pages/qr_scanner_page.dart' as qr_scanner;
 
 class StockOutPage extends StatefulWidget {
   const StockOutPage({super.key});
@@ -105,17 +106,46 @@ class _StockOutPageState extends State<StockOutPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Select Product', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Product', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _selectedProductId,
-                    decoration: const InputDecoration(hintText: 'Choose product...'),
-                    items: _products.map((p) => DropdownMenuItem(
-                      value: p['id'].toString(),
-                      child: Text('${p['name']} (Qty: ${p['quantity']})', style: const TextStyle(fontSize: 14)),
-                    )).toList(),
-                    onChanged: (v) => setState(() => _selectedProductId = v),
-                    validator: (v) => v == null ? 'Required' : null,
+                  GestureDetector(
+                    onTap: () async {
+                      final scannedId = await Navigator.push<String>(
+                        context,
+                        MaterialPageRoute(builder: (_) => const qr_scanner.QrScannerPage(returnResult: true)),
+                      );
+                      if (scannedId != null && mounted) {
+                        setState(() => _selectedProductId = scannedId);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.qr_code_scanner, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _selectedProductId == null 
+                                ? 'Tap to scan product QR' 
+                                : _products.firstWhere((p) => p['id'] == _selectedProductId, orElse: () => {'name': 'Unknown Product'})['name'] ?? 'Unknown Product',
+                              style: TextStyle(
+                                fontSize: 14, 
+                                color: _selectedProductId == null ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
+                                fontWeight: _selectedProductId == null ? FontWeight.normal : FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (_selectedProductId != null)
+                            const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 20),
+                        ],
+                      ),
+                    ),
                   ),
                   
                   const SizedBox(height: 20),

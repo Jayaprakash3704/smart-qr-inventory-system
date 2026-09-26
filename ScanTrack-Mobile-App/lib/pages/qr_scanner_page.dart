@@ -3,7 +3,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_reader/services/api_service.dart';
 
 class QrScannerPage extends StatefulWidget {
-  const QrScannerPage({super.key});
+  final bool returnResult;
+  const QrScannerPage({super.key, this.returnResult = false});
 
   @override
   State<QrScannerPage> createState() => _QrScannerPageState();
@@ -32,7 +33,12 @@ class _QrScannerPageState extends State<QrScannerPage> {
       final res = await ApiService().scanQr(id);
       if (mounted) {
         if (res['product_id'] != null || res['id'] != null) {
-          Navigator.pushReplacementNamed(context, '/product/${res['product_id'] ?? res['id']}');
+          final pid = res['product_id'] ?? res['id'];
+          if (widget.returnResult) {
+            Navigator.pop(context, pid);
+          } else {
+            Navigator.pushReplacementNamed(context, '/product/$pid');
+          }
         } else {
           _showError('Product not found.');
         }
@@ -57,10 +63,12 @@ class _QrScannerPageState extends State<QrScannerPage> {
       final res = await ApiService().scanQr(qr);
       if (mounted) {
         if (res['product_id'] != null) {
-          // Success, navigate to product
-          Navigator.pushReplacementNamed(context, '/product/${res['product_id']}');
+          if (widget.returnResult) {
+            Navigator.pop(context, res['product_id']);
+          } else {
+            Navigator.pushReplacementNamed(context, '/product/${res['product_id']}');
+          }
         } else {
-          // No product ID returned
           _showError('Invalid QR format or product not found.');
         }
       }
