@@ -74,7 +74,7 @@ export default function Dashboard() {
         <StatCard title="Low Stock"       value={s.lowStock}      sub="Needs attention" icon={AlertTriangle}  iconClass="icon-box-yellow" to="/notifications" delay={120} />
         <StatCard title="Out of Stock"    value={s.outOfStock}    sub="Unavailable"     icon={TrendingDown}   iconClass="icon-box-red"    to="/inventory"     delay={180} />
         <StatCard title="Total Qty"       value={s.totalQuantity} sub="Units on hand"   icon={BarChart3}      iconClass="icon-box-blue"   delay={240} />
-        <StatCard title="Pending Orders"  value={s.pendingOrders} sub="Awaiting approval" icon={ClipboardList} iconClass="icon-box-purple" to="/orders"       delay={300} />
+        <StatCard title="Pending Sales"  value={s.pendingOrders} sub="Awaiting approval" icon={ClipboardList} iconClass="icon-box-purple" to="/orders"       delay={300} />
       </div>
 
       {/* Charts Row */}
@@ -170,7 +170,7 @@ export default function Dashboard() {
               { label: 'Stock In',      to: '/stock-in',      icon: ArrowDownToLine, cls: 'icon-box-green' },
               { label: 'Stock Out',     to: '/stock-out',     icon: ArrowUpFromLine, cls: 'icon-box-red' },
               { label: 'Generate QR',  to: '/qr-generator',  icon: Package,          cls: 'icon-box-brand' },
-              { label: 'View Orders',  to: '/orders',         icon: ShoppingCart,    cls: 'icon-box-purple' },
+              { label: 'View Sales',  to: '/orders',         icon: ShoppingCart,    cls: 'icon-box-purple' },
             ].map(({ label, to, icon: Icon, cls }) => (
               <Link
                 key={to} to={to}

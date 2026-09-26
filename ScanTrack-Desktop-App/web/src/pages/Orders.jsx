@@ -35,7 +35,7 @@ export default function Orders() {
   const handleApprove = async (orderId) => {
     try {
       await axios.post(`/api/orders/${orderId}/approve`)
-      toast.success('Order approved and stock deducted!')
+      toast.success('Sale approved and stock deducted!')
       qc.invalidateQueries(['orders'])
       qc.invalidateQueries(['products'])
     } catch (err) {
@@ -47,7 +47,7 @@ export default function Orders() {
   const handleCancel = async (orderId) => {
     try {
       await axios.post(`/api/orders/${orderId}/cancel`)
-      toast.success('Order cancelled')
+      toast.success('Sale cancelled')
       qc.invalidateQueries(['orders'])
     } catch (err) {
       toast.error(err.response?.data?.error || 'Cancel failed')
@@ -61,7 +61,7 @@ export default function Orders() {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <Plus size={15} /> New Order
+          <Plus size={15} /> New Sale
         </button>
       </div>
 
@@ -90,7 +90,7 @@ export default function Orders() {
           <table>
             <thead>
               <tr>
-                <th>Order ID</th>
+                <th>Sale ID</th>
                 <th>Customer</th>
                 <th>Items</th>
                 <th>Status</th>
@@ -197,7 +197,7 @@ function CreateOrderModal({ products, onClose, onCreated }) {
     setLoading(true)
     try {
       await axios.post('/api/orders', { customer_name: customerName, items, notes })
-      toast.success('Order created!')
+      toast.success('Sale created!')
       onCreated()
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to create order')
@@ -210,7 +210,7 @@ function CreateOrderModal({ products, onClose, onCreated }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
         <div className="modal__header">
-          <span className="modal__title">Create New Order</span>
+          <span className="modal__title">Create New Sale</span>
           <button className="btn btn-ghost btn-sm btn-icon" onClick={onClose}>✕</button>
         </div>
         <form onSubmit={handleSubmit}>
@@ -222,7 +222,7 @@ function CreateOrderModal({ products, onClose, onCreated }) {
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="form-label">Order Items *</label>
+                <label className="form-label">Sale Items *</label>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={addItem}><Plus size={13} /> Add Item</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -264,7 +264,7 @@ function CreateOrderModal({ products, onClose, onCreated }) {
           </div>
           <div className="modal__footer">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Creating...' : 'Create Order'}</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Creating...' : 'Create Sale'}</button>
           </div>
         </form>
       </div>

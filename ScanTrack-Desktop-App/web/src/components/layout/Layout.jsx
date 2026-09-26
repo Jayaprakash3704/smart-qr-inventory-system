@@ -8,7 +8,7 @@ const PAGE_TITLES = {
   '/stock-in':      { title: 'Stock In',             sub: 'Record incoming inventory' },
   '/stock-out':     { title: 'Stock Out',            sub: 'Record outgoing inventory' },
   '/reports':       { title: 'Reports & Analytics',  sub: 'Inventory trends and insights' },
-  '/orders':        { title: 'Orders',               sub: 'Customer orders and fulfillment' },
+  '/orders':        { title: 'Sales',               sub: 'Customer sales and fulfillment' },
   '/notifications': { title: 'Notifications',        sub: 'Alerts and system messages' },
   '/settings':      { title: 'Settings',             sub: 'Application configuration' },
 }

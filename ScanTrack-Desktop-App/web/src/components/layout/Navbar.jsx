@@ -15,7 +15,7 @@ const ADMIN_NAV = [
   { to: '/stock-in',     icon: ArrowDownToLine,   label: 'Stock In'     },
   { to: '/stock-out',    icon: ArrowUpFromLine,   label: 'Stock Out'    },
   { to: '/reports',      icon: BarChart3,         label: 'Reports'      },
-  { to: '/orders',       icon: ClipboardList,     label: 'Orders'       },
+  { to: '/orders',       icon: ClipboardList,     label: 'Sales'        },
   { to: '/notifications',icon: Bell,              label: 'Notifications'},
   { to: '/settings',     icon: Settings,          label: 'Settings'     },
 ]
@@ -26,7 +26,7 @@ const STAFF_NAV = [
   { to: '/stock-in',     icon: ArrowDownToLine,   label: 'Stock In'     },
   { to: '/stock-out',    icon: ArrowUpFromLine,   label: 'Stock Out'    },
   { to: '/reports',      icon: BarChart3,         label: 'Reports'      },
-  { to: '/orders',       icon: ClipboardList,     label: 'Orders'       },
+  { to: '/orders',       icon: ClipboardList,     label: 'Sales'        },
   { to: '/notifications',icon: Bell,              label: 'Notifications'},
   { to: '/settings',     icon: Settings,          label: 'Settings'     },
 ]

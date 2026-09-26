@@ -238,11 +238,11 @@ export default function Reports() {
       {(s?.totalOrders ?? 0) > 0 && (
         <div className="card card-p">
           <h3 className="font-semibold text-heading mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ShoppingCart size={18} /> Orders Overview
+            <ShoppingCart size={18} /> Sales Overview
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
             {[
-              { label: 'Total Orders',     value: s?.totalOrders ?? 0,     color: 'var(--gray-700)',   bg: 'var(--gray-100)',    icon: ShoppingCart },
+              { label: 'Total Sales',     value: s?.totalOrders ?? 0,     color: 'var(--gray-700)',   bg: 'var(--gray-100)',    icon: ShoppingCart },
               { label: 'Pending',          value: s?.pendingOrders ?? 0,   color: 'var(--warning-text)', bg: 'var(--warning-bg)', icon: Clock },
               { label: 'Approved',         value: s?.approvedOrders ?? 0,  color: 'var(--success-text)', bg: 'var(--success-bg)', icon: CheckCircle },
               { label: 'Cancelled',        value: s?.cancelledOrders ?? 0, color: 'var(--gray-400)',   bg: 'var(--gray-100)',    icon: TrendingDown },
