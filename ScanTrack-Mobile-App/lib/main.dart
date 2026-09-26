@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -172,7 +173,6 @@ class ScanTrackApp extends StatelessWidget {
   }
 }
 
-/// AuthWrapper — shows loading while resolving Firebase auth state AND user role.
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -181,67 +181,82 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  bool _fetchingRole = false;
+  User? _user;
+  bool _isLoading = true;
   String? _authError;
+  StreamSubscription<User?>? _authSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSub = FirebaseAuth.instance.authStateChanges().listen(_handleAuthState);
+  }
+
+  Future<void> _handleAuthState(User? user) async {
+    if (!mounted) return;
+    
+    if (user == null) {
+      setState(() {
+        _user = null;
+        _isLoading = false;
+        // Don't clear authError here, let LoginPage display it once.
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _authError = null; // Clear error on new login attempt
+    });
+
+    try {
+      await UserSession().fetch();
+      if (mounted) {
+        setState(() {
+          _user = user;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // API returned 401/403 or some other unrecoverable error
+      await AuthService.signOut();
+      if (mounted) {
+        setState(() {
+          _user = null;
+          _isLoading = false;
+          _authError = 'Access Denied: You are not registered in the system.';
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading...', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
-                ],
-              ),
-            ),
-          );
-        }
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Verifying access...', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
 
-        if (snapshot.hasData) {
-          // Fetch role from backend on every auth state change
-          if (!_fetchingRole && _authError == null) {
-            _fetchingRole = true;
-            UserSession().fetch().then((_) {
-              if (mounted) setState(() => _fetchingRole = false);
-            }).catchError((e) async {
-              // If backend rejects them (e.g. 403), sign out and show error
-              await AuthService.signOut();
-              if (mounted) {
-                setState(() {
-                  _fetchingRole = false;
-                  _authError = 'Access Denied: You are not registered in the system.';
-                });
-              }
-            });
-            
-            return const Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Verifying access...', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
-                  ],
-                ),
-              ),
-            );
-          }
-          
-          if (_authError == null && !_fetchingRole) {
-            return const WelcomePage();
-          }
-        }
+    if (_user != null && _authError == null) {
+      return const WelcomePage();
+    }
 
-        return LoginPage(externalError: _authError);
-      },
-    );
+    return LoginPage(externalError: _authError);
   }
 }
