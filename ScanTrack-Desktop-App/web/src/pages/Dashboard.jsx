@@ -117,19 +117,20 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie
-                  data={s.categoryBreakdown}
-                  cx="50%" cy="50%"
-                  outerRadius={80} innerRadius={40}
+                  data={(s.categoryBreakdown || []).filter(d => d.count > 0)}
+                  cx="50%" cy="45%"
+                  outerRadius={65} innerRadius={35}
                   dataKey="count"
                   paddingAngle={3}
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={false}
+                  labelLine={true}
                 >
-                  {(s.categoryBreakdown || []).map((_, i) => (
+                  {(s.categoryBreakdown || []).filter(d => d.count > 0).map((_, i) => (
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'Outfit', fontSize: 13 }} />
+                <Legend wrapperStyle={{ fontSize: 12, fontFamily: 'Outfit', paddingTop: 20 }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (

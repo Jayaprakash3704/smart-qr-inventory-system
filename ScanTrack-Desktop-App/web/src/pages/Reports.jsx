@@ -263,20 +263,20 @@ export default function Reports() {
       <div className="grid-2" style={{ gap: 20 }}>
         <div className="card card-p">
           <h3 className="font-semibold text-heading mb-4">Stock Status Distribution</h3>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={s?.statusBreakdown || []}
-                cx="50%" cy="50%"
-                outerRadius={90} innerRadius={50}
+                data={(s?.statusBreakdown || []).filter(d => d.count > 0)}
+                cx="50%" cy="45%"
+                outerRadius={75} innerRadius={45}
                 dataKey="count" paddingAngle={4}
                 label={({ name, value }) => `${name}: ${value}`}
-                labelLine={false}
+                labelLine={true}
               >
-                {(s?.statusBreakdown || []).map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                {(s?.statusBreakdown || []).filter(d => d.count > 0).map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
               </Pie>
               <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'Outfit', fontSize: 13 }} />
-              <Legend wrapperStyle={{ fontSize: 12, fontFamily: 'Outfit' }} />
+              <Legend wrapperStyle={{ fontSize: 12, fontFamily: 'Outfit', paddingTop: 20 }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
