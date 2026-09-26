@@ -92,19 +92,10 @@ class _QrScannerPageState extends State<QrScannerPage> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          MobileScanner(
-            controller: _ctrl,
-            onDetect: _onDetect,
-          ),
+          // Solid background
+          Container(color: Colors.black),
           
-          // Overlay
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
-            ),
-          ),
-          
-          // Scanner Window
+          // Restricted Scanner Window
           Center(
             child: Container(
               width: 250,
@@ -112,7 +103,14 @@ class _QrScannerPageState extends State<QrScannerPage> {
               decoration: BoxDecoration(
                 border: Border.all(color: Theme.of(context).colorScheme.primary, width: 3),
                 borderRadius: BorderRadius.circular(20),
-                color: Colors.transparent,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(17), // slightly less than border radius to fit inside
+                child: MobileScanner(
+                  controller: _ctrl,
+                  onDetect: _onDetect,
+                  // The camera will now only render inside this 250x250 box
+                ),
               ),
             ),
           ),

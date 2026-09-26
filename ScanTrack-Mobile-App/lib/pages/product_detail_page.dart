@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_reader/services/api_service.dart';
+import 'package:qr_reader/services/user_session.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final String productId;
@@ -112,7 +113,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             icon: const Icon(Icons.home),
             onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false),
           ),
-          IconButton(onPressed: _showDeleteConfirm, icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444))),
+          if (UserSession().isAdmin)
+            IconButton(onPressed: _showDeleteConfirm, icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444))),
         ],
       ),
       body: SingleChildScrollView(
