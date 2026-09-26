@@ -312,25 +312,15 @@ export default function Reports() {
             </span>
           </div>
           <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={filteredDaily}>
-              <defs>
-                <linearGradient id="gIn"  x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gOut" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                </linearGradient>
-              </defs>
+            <BarChart data={filteredDaily}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'Outfit', fontSize: 13 }} />
-              <Legend wrapperStyle={{ fontSize: 12, fontFamily: 'Outfit' }} />
-              <Area type="monotone" dataKey="stockIn"  name="Stock In"  stroke="#22c55e" fill="url(#gIn)"  strokeWidth={2.5} dot={{ r: 3 }} />
-              <Area type="monotone" dataKey="stockOut" name="Stock Out" stroke="#ef4444" fill="url(#gOut)" strokeWidth={2.5} dot={{ r: 3 }} />
-            </AreaChart>
+              <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'Outfit', fontSize: 13 }} cursor={{ fill: '#f8fafc' }} />
+              <Legend wrapperStyle={{ fontSize: 12, fontFamily: 'Outfit', paddingTop: 10 }} />
+              <Bar dataKey="stockIn"  name="Stock In"  fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="stockOut" name="Stock Out" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
