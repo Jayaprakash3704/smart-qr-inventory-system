@@ -62,13 +62,7 @@ export default function StockIn() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-      {/* Header */}
-      <div className="page-header">
-        <div className="page-header__left">
-          <h1>Stock In</h1>
-          <p>Record incoming inventory to increase stock levels</p>
-        </div>
-      </div>
+
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, alignItems: 'start' }}>
 

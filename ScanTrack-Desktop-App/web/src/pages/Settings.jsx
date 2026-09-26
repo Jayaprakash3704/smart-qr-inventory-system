@@ -377,17 +377,7 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40 }}>
-
-      <div className="page-header">
-        <div className="page-header__left">
-          <h1>Settings</h1>
-          <p>Manage your profile, preferences and team access</p>
-        </div>
-        <button onClick={handleSignOut} className="btn btn-secondary btn-sm" style={{ gap: 6 }}>
-          <LogOut size={14} /> Sign Out
-        </button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40, paddingTop: 10 }}>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: 24, alignItems: 'start' }}>
         <MyProfile currentUser={currentUser} />

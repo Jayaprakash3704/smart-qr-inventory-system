@@ -24,13 +24,7 @@ export default function QRGenerator() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-      {/* Header */}
-      <div className="page-header">
-        <div className="page-header__left">
-          <h1>QR Generator</h1>
-          <p>Select a product to view and download its QR code</p>
-        </div>
-      </div>
+
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start' }}>
 

@@ -45,12 +45,8 @@ export default function Inventory() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* Header */}
-      <div className="page-header">
-        <div className="page-header__left">
-          <h1>Inventory</h1>
-          <p>{products.length} products registered · {products.filter(p => p.status === 'LOW_STOCK').length} low stock</p>
-        </div>
+      {/* Header Actions */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <div className="flex gap-2">
           <button className="btn btn-secondary btn-sm" onClick={() => refetch()}>
             <RefreshCw size={14} /> Refresh

@@ -48,17 +48,13 @@ export default function Notifications() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-      <div className="page-header">
-        <div className="page-header__left">
-          <h1>Notifications</h1>
-          <p>{unread.length} unread · {notifs.length} total</p>
-        </div>
-        {unread.length > 0 && (
+      {unread.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           <button className="btn btn-secondary btn-sm" onClick={markAllRead}>
             <CheckCheck size={14} /> Mark all read
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Unread */}
       {unread.length > 0 && (

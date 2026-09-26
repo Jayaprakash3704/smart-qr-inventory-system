@@ -59,11 +59,7 @@ export default function Orders() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-      <div className="page-header">
-        <div className="page-header__left">
-          <h1>Orders</h1>
-          <p>{orders.length} total orders · {pendingCount} pending approval</p>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
           <Plus size={15} /> New Order
         </button>
