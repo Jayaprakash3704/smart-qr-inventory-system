@@ -3,39 +3,48 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
-  const { loginWithGoogle, loginWithEmail } = useAuth();
+  const { loginWithGoogle, loginWithEmail, authError, setAuthError, currentUser } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Only navigate AFTER the backend has successfully fetched the role
+  React.useEffect(() => {
+    if (currentUser) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [currentUser, navigate]);
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     try {
-      setError('');
+      setLocalError('');
+      if (setAuthError) setAuthError('');
       setLoading(true);
       await loginWithEmail(email, password);
-      navigate('/dashboard');
+      // Wait for onAuthStateChanged to trigger navigation
     } catch (err) {
-      setError('Failed to sign in. Check your credentials.');
-    } finally {
+      setLocalError('Failed to sign in. Check your credentials.');
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
     try {
-      setError('');
+      setLocalError('');
+      if (setAuthError) setAuthError('');
       setLoading(true);
       await loginWithGoogle();
-      navigate('/dashboard');
+      // Wait for onAuthStateChanged to trigger navigation
     } catch (err) {
-      setError('Failed to sign in with Google.');
-    } finally {
+      setLocalError('Failed to sign in with Google.');
       setLoading(false);
     }
   };
+
+  const displayError = authError || localError;
 
   return (
     <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-50)' }}>
@@ -43,7 +52,11 @@ export default function Login() {
         <h2 style={{ marginBottom: 8 }}>ScanTrack</h2>
         <p style={{ color: 'var(--gray-500)', marginBottom: 24 }}>Sign in to your account</p>
         
-        {error && <div style={{ color: 'var(--danger-text)', background: 'var(--danger-bg)', padding: '10px', borderRadius: 'var(--r-md)', marginBottom: 16 }}>{error}</div>}
+        {displayError && (
+          <div style={{ color: 'var(--danger-text)', background: 'var(--danger-bg)', padding: '12px', borderRadius: 'var(--r-md)', marginBottom: 16, fontSize: 14, fontWeight: 500 }}>
+            {displayError}
+          </div>
+        )}
         
         <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <input 
