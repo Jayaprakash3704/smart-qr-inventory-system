@@ -16,6 +16,7 @@ import 'package:qr_reader/pages/splash_screen.dart';
 import 'package:qr_reader/services/offline_sync_service.dart';
 import 'package:qr_reader/services/user_session.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:qr_reader/services/auth_service.dart';
 
 
 void main() async {
