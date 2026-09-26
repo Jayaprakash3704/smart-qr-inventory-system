@@ -364,33 +364,6 @@ function AppPreferences() {
   )
 }
 
-// ─── System Info ─────────────────────────────────────────────────────────────
-function SystemInfo() {
-  return (
-    <div className="card card-p">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="icon-box icon-box-md icon-box-gray"><Info size={18} /></div>
-        <h3 className="font-semibold text-heading">System Information</h3>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[
-          ['Application', 'ScanTrack QR Inventory'],
-          ['Version', '2.0.0'],
-          ['Backend', 'Node.js + Express'],
-          ['Database', 'SQLite (WAL Mode)'],
-          ['Frontend', 'React 19 + Vite'],
-          ['Auth', 'Firebase Auth'],
-          ['Mobile', 'Flutter + Firebase'],
-        ].map(([label, value]) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--gray-100)' }}>
-            <span style={{ fontSize: 12, color: 'var(--gray-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)' }}>{value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 export default function Settings() {
@@ -420,7 +393,6 @@ export default function Settings() {
         <MyProfile currentUser={currentUser} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <AppPreferences />
-          <SystemInfo />
         </div>
       </div>
 

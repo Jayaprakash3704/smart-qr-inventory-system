@@ -13,16 +13,124 @@ import {
 const PIE_COLORS      = ['#22c55e', '#eab308', '#ef4444']
 const CATEGORY_COLORS = ['#f97316','#3b82f6','#22c55e','#a855f7','#ef4444','#eab308','#06b6d4','#ec4899']
 
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
+import toast from 'react-hot-toast'
+
 // ─── CSV Export Helper ────────────────────────────────────────────────
 function exportCSV(data, filename) {
-  if (!data || data.length === 0) return
+  if (!data || data.length === 0) {
+    toast.error('No data available to export.')
+    return
+  }
   const cols = Object.keys(data[0])
-  const rows = data.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(','))
-  const csv  = [cols.join(','), ...rows].join('\n')
-  const a    = document.createElement('a')
-  a.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv)
+  const rows = data.map(r => cols.map(c => {
+    let val = r[c] ?? ''
+    if (typeof val === 'object') val = JSON.stringify(val)
+    val = String(val).replace(/"/g, '""') // Escape quotes
+    return `"${val}"` // Wrap in quotes for commas
+  }).join(','))
+  
+  const csv = [cols.join(','), ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  
+  const a = document.createElement('a')
+  a.href = url
   a.download = filename
   a.click()
+  URL.revokeObjectURL(url)
+  toast.success('CSV Exported Successfully!')
+}
+
+// ─── PDF Export Helper ────────────────────────────────────────────────
+function exportPDF(s, txns, lowStock, days) {
+  const doc = new jsPDF()
+  
+  // Header
+  doc.setFontSize(20)
+  doc.setTextColor(30, 41, 59)
+  doc.text('ScanTrack - Reports & Analytics', 14, 22)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30)
+  doc.text(`Report Period: Last ${days} days`, 14, 35)
+  
+  // KPI Summary Table
+  doc.setFontSize(14)
+  doc.setTextColor(15, 23, 42)
+  doc.text('Inventory Overview', 14, 48)
+  
+  const kpiData = [
+    ['Total Products', s?.totalProducts?.toString() || '0'],
+    ['In Stock', s?.inStock?.toString() || '0'],
+    ['Low Stock', s?.lowStock?.toString() || '0'],
+    ['Out of Stock', s?.outOfStock?.toString() || '0'],
+    ['Inventory Value (Cost)', `Rs. ${(s?.totalInventoryValue || 0).toLocaleString('en-IN')}`],
+    ['Potential Revenue', `Rs. ${(s?.potentialRevenue || 0).toLocaleString('en-IN')}`]
+  ]
+  
+  doc.autoTable({
+    startY: 52,
+    head: [['Metric', 'Value']],
+    body: kpiData,
+    theme: 'grid',
+    headStyles: { fillColor: [249, 115, 22] }, // Brand orange
+    styles: { fontSize: 10 }
+  })
+  
+  // Low Stock Table
+  if (lowStock && lowStock.length > 0) {
+    let currentY = doc.lastAutoTable.finalY + 15
+    if (currentY > 250) { doc.addPage(); currentY = 20 }
+    
+    doc.setFontSize(14)
+    doc.text('Low & Out of Stock Alerts', 14, currentY)
+    
+    const lowStockData = lowStock.map(p => [
+      p.name, p.sku || 'N/A', p.category || 'N/A', 
+      p.quantity.toString(), p.low_stock_threshold.toString(), p.status.replace(/_/g, ' ')
+    ])
+    
+    doc.autoTable({
+      startY: currentY + 4,
+      head: [['Product', 'SKU', 'Category', 'Qty', 'Threshold', 'Status']],
+      body: lowStockData,
+      theme: 'grid',
+      headStyles: { fillColor: [239, 68, 68] }, // Red
+      styles: { fontSize: 9 }
+    })
+  }
+  
+  // Recent Transactions
+  if (txns && txns.length > 0) {
+    let currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : 60
+    if (currentY > 250) { doc.addPage(); currentY = 20 }
+    
+    doc.setFontSize(14)
+    doc.text(`Recent Transactions (Last ${days} days)`, 14, currentY)
+    
+    const txnsData = txns.slice(0, 100).map(t => [
+      new Date(t.timestamp).toLocaleDateString(),
+      t.product_name,
+      t.type.replace(/_/g, ' '),
+      t.quantity.toString(),
+      t.reason || 'N/A'
+    ])
+    
+    doc.autoTable({
+      startY: currentY + 4,
+      head: [['Date', 'Product', 'Type', 'Qty', 'Reason']],
+      body: txnsData,
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] }, // Blue
+      styles: { fontSize: 9 }
+    })
+  }
+  
+  doc.save(`scantrack-report-${days}d.pdf`)
+  toast.success('PDF Exported Successfully!')
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────
@@ -75,38 +183,31 @@ export default function Reports() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-      {/* ── Header ── */}
-      <div className="page-header">
-        <div className="page-header__left">
-          <h1>Reports & Analytics</h1>
-          <p>Inventory insights · {s?.totalProducts ?? 0} products tracked</p>
-        </div>
-        <div className="flex gap-2">
-          {/* Date Range Selector */}
-          {[7, 30, 90].map(d => (
-            <button
-              key={d}
-              className={`btn btn-sm ${days === d ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setDays(d)}
-            >
-              {d}d
-            </button>
-          ))}
+      {/* ── Header Controls ── */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
+        {[7, 30, 90].map(d => (
           <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => exportCSV(txns, `scantrack-transactions-${days}d.csv`)}
-            title="Export transactions to CSV"
+            key={d}
+            className={`btn btn-sm ${days === d ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setDays(d)}
           >
-            <Download size={14} /> Export CSV
+            {d}d
           </button>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => window.print()}
-            title="Print report"
-          >
-            🖨 Print
-          </button>
-        </div>
+        ))}
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={() => exportCSV(txns, `scantrack-transactions-${days}d.csv`)}
+          title="Export transactions to CSV"
+        >
+          <Download size={14} /> Export CSV
+        </button>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => exportPDF(s, txns, lowStock, days)}
+          title="Export Professional PDF Report"
+        >
+          <Download size={14} /> Export PDF
+        </button>
       </div>
 
       {/* ── Inventory KPIs ── */}
