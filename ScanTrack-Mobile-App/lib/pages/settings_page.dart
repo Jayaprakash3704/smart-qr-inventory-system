@@ -355,7 +355,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
         ),
       ),
-      bottomNavigationBar: buildBottomNav(context, -1),
     );
   }
 
